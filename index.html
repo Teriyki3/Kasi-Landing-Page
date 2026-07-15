@@ -22,7 +22,7 @@
 
   /* ============ LANDING (interactive 3D hero) ============ */
   /* fixed white stage holding the live KASI car; fades out on START ENGINE */
-  #landing{position:fixed;inset:0;background:transparent;z-index:15;
+  #landing{position:fixed;inset:0;background:#ffffff;z-index:15;
     transition:opacity .8s ease;}
   #landing.fade{opacity:0;pointer-events:none;}
   #landing.gone{display:none;}
@@ -44,8 +44,6 @@
     opacity:.55;line-height:2;color:var(--ink);}
   /* transparent spacer: defines the scroll range that drives the spin-down */
   #scrollSpacer{width:100%;height:200vh;pointer-events:none;}
-  /* hide game chrome while hero landing is active */
-  body.hero-phase .tilt,body.hero-phase #hud{visibility:hidden;}
 
   /* ============ TILT-SHIFT FAKE (blurred top & bottom bands) ============ */
   .tilt{position:fixed;left:0;width:100%;height:22%;pointer-events:none;z-index:5;
@@ -415,8 +413,6 @@ const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
-let heroPhaseActive = true;
-document.body.classList.add('hero-phase');
 
 addEventListener('resize', () => {          // graceful resize
   camera.aspect = innerWidth/innerHeight;
@@ -1402,8 +1398,9 @@ const Hero = (() => {
   const hScene = new THREE.Scene();
   hScene.background = new THREE.Color(0xffffff);
   const hCam = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 200);
-  // heroCanvas is now a transparent pointer-capture layer only;
-  // rendering is done via the shared main renderer to avoid two WebGL contexts.
+  const hRenderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  hRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  hRenderer.setSize(innerWidth, innerHeight);
 
   // lights cloned from the game so shading matches at the crossfade
   hScene.add(new THREE.HemisphereLight(0xFFF3D6, 0xD9B87C, 0.9));
@@ -1474,6 +1471,7 @@ const Hero = (() => {
   addEventListener('resize', () => {
     hCam.aspect = innerWidth/innerHeight;
     hCam.updateProjectionMatrix();
+    hRenderer.setSize(innerWidth, innerHeight);
   });
 
   function frame(){
@@ -1494,7 +1492,7 @@ const Hero = (() => {
     hCam.position.copy(camPos);
     hCam.lookAt(lookAt);
 
-    renderer.render(hScene, hCam);
+    hRenderer.render(hScene, hCam);
   }
   onScroll();
   frame();
@@ -1503,8 +1501,6 @@ const Hero = (() => {
   function fadeOut(){                     // START ENGINE: dissolve the white stage
     if (!active) return;
     active = false;
-    heroPhaseActive = false;
-    document.body.classList.remove('hero-phase');
     landing.classList.add('fade');
     landing.addEventListener('transitionend', function te(){
       landing.classList.add('gone');
@@ -1514,8 +1510,6 @@ const Hero = (() => {
   function show(scrollToEnd){             // return from a race → back to the hero
     landing.classList.remove('fade', 'gone');
     active = true; lastT = performance.now();
-    heroPhaseActive = true;
-    document.body.classList.add('hero-phase');
     scrollTo(0, scrollToEnd ? innerHeight : 0);
     onScroll();
   }
@@ -1718,7 +1712,6 @@ const Game = (() => {
   let last = performance.now();
   function loop(now){
     requestAnimationFrame(loop);
-    if (heroPhaseActive) return;
     const dt = Math.min(0.033, (now-last)/1000);
     last = now;
     const time = now/1000;

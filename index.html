@@ -3,12 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KASI RALLY — Nakuru Circuit</title>
+<title>KASI — Energy for the Neighbourhood</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   /* ============ GLOBAL / RESET ============ */
   :root{
     --cream:#F3E9CF; --ink:#3A2E22; --orange:#E8542F;
     --yellow:#F2C43D; --blue:#4E9FCE; --sand:#C9BE7E;
+    --green:#6FBF73;
+    --font-display:'Unbounded','Arial Black',sans-serif;
+    --font-body:'Archivo','Helvetica Neue',Arial,sans-serif;
+    --font-mono:'IBM Plex Mono','Courier New',monospace;
+    /* live theme tokens — swapped per chapter by JS (body[data-theme]) */
+    --fg:#3A2E22; --fg-soft:rgba(58,46,34,.62); --hair:rgba(58,46,34,.18);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;height:100%;background:var(--sand);
@@ -34,18 +43,206 @@
   #scrollHint .arrow{display:block;font-size:22px;margin-top:8px;}
   @keyframes hintBob{0%,100%{transform:translateX(-50%) translateY(0);}
     50%{transform:translateX(-50%) translateY(6px);}}
-  /* minimal start screen: fades in once the car has spun into place.
-     anchored in the upper third so it sits ABOVE the parked car, no overlap */
-  #startWrap{position:absolute;left:50%;top:20%;transform:translateX(-50%);
+  /* minimal start screen: fades in once the car has parked into place.
+     anchored low-centre so the button sits directly BENEATH the car */
+  #startWrap{position:absolute;left:50%;bottom:12vh;transform:translateX(-50%);
     z-index:2;text-align:center;opacity:0;pointer-events:none;transition:opacity .35s;}
   #startWrap.on{opacity:1;pointer-events:auto;}
   #startWrap #bestLine{margin-bottom:22px;}
-  #startWrap .keys{margin-top:26px;font-size:11px;letter-spacing:3px;
-    opacity:.55;line-height:2;color:var(--ink);}
-  /* transparent spacer: defines the scroll range that drives the spin-down */
-  #scrollSpacer{width:100%;height:200vh;pointer-events:none;}
   /* hide game chrome while hero landing is active */
   body.hero-phase .tilt,body.hero-phase #hud{visibility:hidden;}
+
+  /* ============================================================
+     KASI BRAND STORY — scroll-driven landing over the live car
+     ============================================================ */
+  /* theme tokens per chapter (JS sets body[data-theme]); 3D scene paints
+     the actual background, these drive DOM text/hairline colours */
+  body{transition:none;}
+  body[data-theme="white"],body[data-theme="cream"]{
+    --fg:var(--ink); --fg-soft:rgba(58,46,34,.60); --hair:rgba(58,46,34,.16);}
+  body[data-theme="ink"]{
+    --fg:#F3E9CF; --fg-soft:rgba(243,233,207,.62); --hair:rgba(243,233,207,.20);}
+  body[data-theme="orange"]{
+    --fg:#2A1D12; --fg-soft:rgba(42,29,18,.66); --hair:rgba(42,29,18,.24);}
+  body[data-theme="blue"]{
+    --fg:#F3E9CF; --fg-soft:rgba(243,233,207,.66); --hair:rgba(243,233,207,.22);}
+
+  /* story layer floats above the transparent hero canvas; only real
+     interactive children capture pointer events, so drag-to-spin still
+     works through the gaps */
+  #story{position:relative;z-index:16;pointer-events:none;}
+  #story a,#story button{pointer-events:auto;}
+  .chapter{min-height:100vh;display:flex;position:relative;
+    padding:14vh clamp(24px,7vw,120px);color:var(--fg);
+    transition:color .5s ease;}
+  .chapter.tall{min-height:132vh;}
+  .chapter.final{min-height:180vh;align-items:flex-end;padding-bottom:22vh;}
+  .chapter[data-align="left"]{justify-content:flex-start;align-items:center;}
+  .chapter[data-align="right"]{justify-content:flex-end;align-items:center;text-align:right;}
+  .chapter[data-align="center"]{justify-content:center;align-items:center;text-align:center;}
+  .wrap{max-width:min(560px,90vw);}
+  .chapter[data-align="center"] .wrap{max-width:min(820px,92vw);}
+
+  /* ---- typographic system ---- */
+  .eyebrow{font-family:var(--font-mono);font-size:12px;font-weight:500;
+    letter-spacing:5px;text-transform:uppercase;color:var(--fg-soft);
+    display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+  .chapter[data-align="right"] .eyebrow{justify-content:flex-end;}
+  .chapter[data-align="center"] .eyebrow{justify-content:center;}
+  .eyebrow::before{content:"";width:34px;height:1px;background:currentColor;opacity:.5;}
+  .h-giant{font-family:var(--font-display);font-weight:900;
+    font-size:clamp(52px,11vw,150px);line-height:.86;letter-spacing:-.02em;
+    text-transform:uppercase;margin:0;}
+  .h-big{font-family:var(--font-display);font-weight:800;
+    font-size:clamp(38px,6.5vw,86px);line-height:.98;letter-spacing:-.01em;
+    text-transform:uppercase;margin:0;}
+  .outline{-webkit-text-stroke:1.6px var(--fg);color:transparent;
+    text-stroke:1.6px var(--fg);}
+  .accent{color:var(--orange);}
+  body[data-theme="orange"] .accent{color:var(--ink);}
+  .lede{font-family:var(--font-body);font-weight:400;
+    font-size:clamp(16px,1.7vw,21px);line-height:1.5;color:var(--fg-soft);
+    margin-top:26px;max-width:46ch;}
+  .chapter[data-align="right"] .lede{margin-left:auto;}
+  .lede b,.lede strong{color:var(--fg);font-weight:600;}
+  .ipa{font-family:var(--font-mono);font-size:.62em;color:var(--fg-soft);
+    letter-spacing:2px;vertical-align:middle;}
+
+  /* ---- scroll reveal ---- */
+  .rv{opacity:0;transform:translateY(38px);
+    transition:opacity .8s cubic-bezier(.2,.75,.2,1),transform .8s cubic-bezier(.2,.75,.2,1);
+    transition-delay:calc(var(--i,0)*90ms);}
+  .rv.in{opacity:1;transform:none;}
+  /* padding gives the display-font glyphs horizontal + vertical room so edge
+     letters aren't clipped; the negative margin cancels the layout shift */
+  .mask{display:block;overflow:hidden;padding:.08em .14em;margin:0 -.14em;}
+  .mask>span{display:block;transform:translateY(120%);
+    transition:transform .9s cubic-bezier(.16,.84,.3,1);
+    transition-delay:calc(var(--i,0)*90ms);}
+  .mask.in>span,.in .mask>span{transform:none;}
+
+  /* ---- battery-stat grid (chapter 2 & 3) ---- */
+  .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);
+    gap:34px 48px;margin-top:48px;}
+  .kstat{border-top:1px solid var(--hair);padding-top:16px;}
+  .kstat .num{font-family:var(--font-display);font-weight:800;
+    font-size:clamp(34px,4.4vw,58px);line-height:1;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;}
+  .kstat .num .suf{font-family:var(--font-mono);font-weight:500;
+    font-size:.32em;letter-spacing:1px;margin-left:6px;vertical-align:middle;
+    color:var(--fg-soft);}
+  .kstat .cap{font-family:var(--font-mono);font-size:11px;letter-spacing:3px;
+    text-transform:uppercase;color:var(--fg-soft);margin-top:12px;}
+
+  /* ---- marquee ticker between chapters ---- */
+  .ticker{position:relative;z-index:16;overflow:hidden;pointer-events:none;
+    padding:20px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    color:var(--fg);}
+  .tick-inner{display:inline-flex;white-space:nowrap;will-change:transform;
+    animation:marquee 26s linear infinite;
+    font-family:var(--font-display);font-weight:800;font-size:clamp(22px,3.4vw,40px);
+    text-transform:uppercase;letter-spacing:.01em;}
+  .tick-inner span{padding:0 28px;display:inline-flex;align-items:center;gap:28px;}
+  .tick-inner span::after{content:"◆";color:var(--orange);font-size:.5em;}
+  @keyframes marquee{to{transform:translateX(-50%);}}
+
+  /* ---- brand wordmark on the arrival screen (inside #landing) ----
+     KASI reads as a page title anchored near the top; the tagline is a
+     bottom-left accent so neither overlaps the live car in the frame */
+  #heroTitle{position:absolute;inset:0;z-index:1;pointer-events:none;
+    transition:opacity .4s ease;}
+  #heroTitle .kasi{position:absolute;left:50%;top:clamp(24px,7vh,64px);
+    transform:translateX(-50%);text-align:center;
+    font-family:var(--font-display);font-weight:900;
+    font-size:clamp(40px,9vw,110px);line-height:1;letter-spacing:-.03em;
+    color:var(--ink);opacity:.5;text-transform:uppercase;}
+  #heroTitle .tag{position:absolute;left:clamp(24px,7vw,120px);bottom:88px;
+    max-width:min(340px,72vw);text-align:left;
+    font-family:var(--font-mono);font-weight:500;
+    font-size:clamp(11px,1.3vw,15px);letter-spacing:6px;text-transform:uppercase;
+    color:var(--ink);opacity:.7;line-height:1.9;}
+  #heroTitle .tag b{color:var(--orange);font-weight:600;}
+
+  /* ---- charge rail: vertical battery progress (from #battBar DNA) ---- */
+  #chargeRail{position:fixed;top:50%;right:26px;transform:translateY(-50%);
+    z-index:25;display:flex;flex-direction:column;align-items:center;gap:12px;
+    transition:opacity .4s ease;}
+  #railTrack{position:relative;width:6px;height:min(46vh,380px);
+    background:var(--hair);border-radius:4px;overflow:hidden;}
+  #railFill{position:absolute;left:0;bottom:0;width:100%;height:var(--charge,0%);
+    background:linear-gradient(to top,var(--green),var(--yellow) 55%,var(--orange));
+    border-radius:4px;}
+  #railPct{font-family:var(--font-mono);font-weight:600;font-size:12px;
+    letter-spacing:1px;color:var(--fg);font-variant-numeric:tabular-nums;
+    writing-mode:vertical-rl;transform:rotate(180deg);}
+  #railTicks{position:absolute;inset:0;pointer-events:auto;}
+  #railTicks button{position:absolute;left:50%;transform:translate(-50%,-50%);
+    width:14px;height:14px;padding:0;border:none;background:transparent;cursor:pointer;}
+  #railTicks button::after{content:"";display:block;width:6px;height:6px;margin:auto;
+    border-radius:50%;background:var(--fg);opacity:.35;transition:opacity .2s,transform .2s;}
+  #railTicks button:hover::after{opacity:1;transform:scale(1.5);}
+  #railLabel{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;
+    color:var(--fg-soft);text-transform:uppercase;writing-mode:vertical-rl;}
+
+  /* ---- sound toggle ---- */
+  #soundToggle{position:fixed;top:24px;right:24px;z-index:26;
+    width:auto;height:38px;padding:0 16px;border:1px solid var(--hair);
+    border-radius:20px;background:transparent;color:var(--fg);cursor:pointer;
+    font-family:var(--font-mono);font-size:10px;letter-spacing:2px;
+    text-transform:uppercase;display:flex;align-items:center;gap:9px;
+    transition:opacity .4s ease,border-color .3s,color .5s;}
+  #soundToggle:hover{border-color:var(--fg);}
+  #soundToggle .dot{width:7px;height:7px;border-radius:50%;
+    background:var(--fg-soft);transition:background .3s;}
+  #soundToggle.on .dot{background:var(--orange);box-shadow:0 0 8px var(--orange);}
+
+  /* ---- grain overlay ---- */
+  #grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.045;
+    mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  /* ---- preloader ---- */
+  #preloader{position:fixed;inset:0;z-index:100;background:var(--cream);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+    transition:opacity .7s ease,visibility .7s ease;}
+  #preloader.done{opacity:0;visibility:hidden;}
+  #preloader .mark{font-family:var(--font-display);font-weight:900;
+    font-size:clamp(56px,13vw,150px);letter-spacing:-.03em;color:var(--ink);
+    position:relative;overflow:hidden;line-height:1;}
+  #preloader .mark .fill{position:absolute;inset:0;color:var(--orange);
+    clip-path:inset(100% 0 0 0);transition:clip-path .2s linear;}
+  #preloader .pbar{width:min(240px,60vw);height:3px;background:rgba(58,46,34,.15);
+    border-radius:2px;overflow:hidden;}
+  #preloader .pbar i{display:block;height:100%;width:0%;background:var(--ink);}
+  #preloader .plabel{font-family:var(--font-mono);font-size:10px;letter-spacing:4px;
+    text-transform:uppercase;color:var(--fg-soft);}
+
+  /* ---- hide all story chrome once the race is live ---- */
+  body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
+  body.playing #heroTitle,body.playing #grain{display:none;}
+
+  /* ---- reduced motion + mobile ---- */
+  @media (prefers-reduced-motion:reduce){
+    .rv{opacity:1;transform:none;transition:none;}
+    .mask>span{transform:none;transition:none;}
+    .tick-inner{animation:none;}
+  }
+  @media (max-width:720px){
+    .chapter{padding:12vh 26px;justify-content:flex-start !important;
+      align-items:flex-end !important;text-align:left !important;min-height:100vh;}
+    .chapter.tall{min-height:118vh;}
+    .wrap{max-width:100%;}
+    .lede{font-size:16px;}
+    .stats-grid{gap:24px 28px;}
+    #chargeRail{top:auto;bottom:16px;right:16px;left:16px;flex-direction:row-reverse;
+      transform:none;gap:10px;align-items:center;}
+    #railTrack{width:100%;height:6px;}
+    #railFill{left:0;bottom:0;width:var(--charge,0%);height:100%;
+      background:linear-gradient(to right,var(--green),var(--yellow) 55%,var(--orange));}
+    #railPct{writing-mode:horizontal-tb;transform:none;}
+    #railTicks,#railLabel{display:none;}
+    #heroTitle{justify-content:flex-end;padding-bottom:16vh;}
+  }
 
   /* ============ TILT-SHIFT FAKE (blurred top & bottom bands) ============ */
   .tilt{position:fixed;left:0;width:100%;height:22%;pointer-events:none;z-index:5;
@@ -170,19 +367,146 @@
   .row{display:flex;gap:16px;}
 </style>
 </head>
-<body>
+<body data-theme="white">
+
+<!-- preloader: KASI mark charges to full, then dissolves -->
+<div id="preloader">
+  <div class="mark">KASI<span class="fill">KASI</span></div>
+  <div class="pbar"><i></i></div>
+  <div class="plabel">Initialising cells…</div>
+</div>
+
+<!-- film grain over everything -->
+<div id="grain"></div>
+
+<!-- ambience toggle -->
+<button id="soundToggle" aria-label="Toggle sound"><span class="dot"></span>SOUND</button>
+
+<!-- charge rail: scroll = state of charge -->
+<div id="chargeRail">
+  <span id="railPct">0%</span>
+  <div id="railTrack"><div id="railFill"></div><div id="railTicks"></div></div>
+  <span id="railLabel">Charge</span>
+</div>
 
 <!-- ============ LANDING: interactive 3D KASI car ============ -->
 <section id="landing">
   <canvas id="heroCanvas"></canvas>
+  <div id="heroTitle">
+    <div class="kasi">KASI</div>
+    <div class="tag">Energy for the neighbourhood &nbsp;·&nbsp; <b>African-built EV batteries</b></div>
+  </div>
   <div id="scrollHint">SCROLL TO PLAY<span class="arrow">&#8595;</span></div>
   <div id="startWrap">
     <div id="bestLine"></div>
     <button class="btn" id="startBtn">START ENGINE</button>
-    <div class="keys">WASD / ARROWS &nbsp;·&nbsp; SPACE — HANDBRAKE &nbsp;·&nbsp; ESC / P — PAUSE</div>
   </div>
 </section>
-<div id="scrollSpacer"></div>
+<!-- ============ BRAND STORY (scrolls over the live car) ============ -->
+<main id="story">
+
+  <!-- CH0 — arrival (giant wordmark lives in #heroTitle above) -->
+  <section class="chapter" id="ch0" data-theme="white" data-align="center"></section>
+
+  <!-- CH1 — the name -->
+  <section class="chapter" id="ch1" data-theme="cream" data-align="left">
+    <div class="wrap">
+      <div class="eyebrow rv">01 — The Name</div>
+      <h2 class="h-giant rv" style="--i:1"><span class="mask"><span>KASI</span></span>
+        <span class="ipa">/ˈka·si/</span></h2>
+      <p class="lede rv" style="--i:2">South African, from <b>lokasie</b> — the location, the township, the
+        neighbourhood. The place that makes you. We build batteries the way the kasi builds
+        drivers: with <b>everything we have</b>, and nothing wasted.</p>
+    </div>
+  </section>
+
+  <div class="ticker" data-theme="cream" aria-hidden="true">
+    <div class="tick-inner">
+      <span>Cell to casing</span><span>Designed on the continent it powers</span>
+      <span>Nairobi</span><span>Nakuru</span><span>Joburg</span><span>Kigali</span>
+      <span>Cell to casing</span><span>Designed on the continent it powers</span>
+      <span>Nairobi</span><span>Nakuru</span><span>Joburg</span><span>Kigali</span>
+    </div>
+  </div>
+
+  <!-- CH2 — the battery (SIGNATURE: pack dives out & explodes) -->
+  <section class="chapter tall" id="ch2" data-theme="ink" data-align="left">
+    <div class="wrap">
+      <div class="eyebrow rv">02 — The Pack</div>
+      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Chemistry,</span></span>
+        <span class="mask"><span class="accent">continental.</span></span></h2>
+      <p class="lede rv" style="--i:2">A prismatic pack engineered cell-up for African heat, dust and
+        distance — not adapted from somewhere colder. Watch it come apart.</p>
+      <div class="stats-grid">
+        <div class="kstat rv" style="--i:2">
+          <div class="num"><span data-count="412">0</span><span class="suf">Wh/kg</span></div>
+          <div class="cap">Energy density</div></div>
+        <div class="kstat rv" style="--i:3">
+          <div class="num"><span data-count="6000" data-sep="1">0</span></div>
+          <div class="cap">Charge cycles</div></div>
+        <div class="kstat rv" style="--i:4">
+          <div class="num"><span data-count="94">0</span><span class="suf">%</span></div>
+          <div class="cap">Recyclable by mass</div></div>
+        <div class="kstat rv" style="--i:5">
+          <div class="num"><span data-count="55">0</span><span class="suf">°C peak</span></div>
+          <div class="cap">Operating envelope</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CH3 — data / telemetry ethos -->
+  <section class="chapter tall" id="ch3" data-theme="orange" data-align="right">
+    <div class="wrap">
+      <div class="eyebrow rv">03 — Proven in Data</div>
+      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Every lap</span></span>
+        <span class="mask"><span>is telemetry.</span></span></h2>
+      <p class="lede rv" style="--i:2">Draw, regen and efficiency, logged in real kilometres. The same
+        numbers you're about to race with — <b>we don't model performance, we measure it.</b></p>
+      <div class="stats-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="kstat rv" style="--i:3">
+          <div class="num"><span data-count="138">0</span><span class="suf">Wh/km</span></div>
+          <div class="cap">Avg race draw</div></div>
+        <div class="kstat rv" style="--i:4">
+          <div class="num"><span data-count="31">0</span><span class="suf">% regen</span></div>
+          <div class="cap">Recovered under braking</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ticker" data-theme="orange" aria-hidden="true">
+    <div class="tick-inner">
+      <span>Draw</span><span>Regen</span><span>State of charge</span><span>Wh / km</span>
+      <span>Measured, not modelled</span>
+      <span>Draw</span><span>Regen</span><span>State of charge</span><span>Wh / km</span>
+      <span>Measured, not modelled</span>
+    </div>
+  </div>
+
+  <!-- CH4 — heritage / Nakuru -->
+  <section class="chapter tall" id="ch4" data-theme="blue" data-align="left">
+    <div class="wrap">
+      <div class="eyebrow rv">04 — The Proving Ground</div>
+      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Langa Langa,</span></span>
+        <span class="mask"><span>Nakuru.</span></span></h2>
+      <p class="lede rv" style="--i:2">2.1 lakeside kilometres, raced from <b>1956 to 1988</b>. Flamingos on the
+        water, dust on the exit kerbs. We test where motorsport in Africa began — and we brought
+        the circuit with us.</p>
+      <p class="lede rv" style="--i:3" >Scroll on. The car is finding its grid slot.</p>
+    </div>
+  </section>
+
+  <!-- CH5 — ethos + finale (START ENGINE lives in #landing overlay) -->
+  <section class="chapter final" id="ch5" data-theme="white" data-align="left">
+    <div class="wrap">
+      <div class="eyebrow rv">05 — Art × Engineering</div>
+      <h2 class="h-giant rv" style="--i:1"><span class="mask"><span>Half studio.</span></span>
+        <span class="mask"><span class="accent">Half lab.</span></span></h2>
+      <p class="lede rv" style="--i:2">KASI is where the draughtsman and the electrochemist share a bench.
+        You've read the spec — now feel it. <b>Full charge. Prove it on the circuit.</b></p>
+    </div>
+  </section>
+
+</main>
 
 <!-- tilt-shift blur bands -->
 <div class="tilt top"></div>
@@ -1422,28 +1746,113 @@ const Hero = (() => {
   hShadow.scale.set(0.72, 1.05, 1);
   hScene.add(hShadow);
 
-  // camera framing: close-up (p=0) → game chase-cam pose (p=1)
-  const camNear = new THREE.Vector3(0, 1.7, -6.8), lookNear = new THREE.Vector3(0, 0.8, 0);
-  const camFar  = new THREE.Vector3(0, 14, -30),  lookFar  = new THREE.Vector3(0, 2, 8);
+  /* --- game-world hint: a sand ground + start-line stripes that fade in over
+     the final scroll segment, so the car reads as parked on the grid rather
+     than floating on white. Lives only in hScene; discarded at fade-out. --- */
+  const envGroup = new THREE.Group(); envGroup.visible = false; hScene.add(envGroup);
+  const hGround = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshBasicMaterial({ color:PAL.sand, transparent:true, opacity:0 }));
+  hGround.rotation.x = -Math.PI/2; hGround.position.y = -0.02; envGroup.add(hGround);
+  // start line: alternating light/dark blocks running across the track ahead
+  const startLine = new THREE.Group(); startLine.position.set(0, 0.02, 6);
+  for (let i = 0; i < 12; i++) {
+    const blk = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9),
+      new THREE.MeshBasicMaterial({ color: i % 2 ? PAL.ink : PAL.line,
+        transparent:true, opacity:0 }));
+    blk.rotation.x = -Math.PI/2; blk.position.set((i - 5.5) * 0.9, 0, 0);
+    startLine.add(blk);
+  }
+  envGroup.add(startLine);
+  const envMats = [hGround.material, ...startLine.children.map(m => m.material)];
+  function revealEnv(t){                    // t: 0 → hidden, 1 → full grid
+    envGroup.visible = t > 0.003;
+    if (!envGroup.visible) return;
+    hGround.material.opacity = t;
+    for (let i = 1; i < envMats.length; i++) envMats[i].opacity = t * 0.9;
+  }
+
+  /* --- SIGNATURE: procedural KASI battery pack tucked under the car.
+     Rides as a child of the car (inherits its orientation). packT drives
+     the whole tray down + each layer fanning apart vertically. --- */
+  const pack = new THREE.Group();
+  pack.position.set(0, 0.16, -0.1);
+  pack.visible = false;
+  car.add(pack);
+  const packParts = [];
+  const addPart = (mesh, ey, ex = 0) => {
+    mesh.userData.base = mesh.position.clone();
+    mesh.userData.exp  = new THREE.Vector3(ex, ey, 0);
+    pack.add(mesh); packParts.push(mesh);
+  };
+  // ink tray (casing floor) — sinks lowest
+  addPart(new THREE.Mesh(new THREE.BoxGeometry(2.0,0.18,2.7), matFlat(PAL.ink)), -0.95);
+  // 3×4 prismatic cell grid — spreads out sideways as it separates
+  for (let cx = 0; cx < 3; cx++)
+    for (let cz = 0; cz < 4; cz++) {
+      const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.5,10),
+        matFlat(cx % 2 ? PAL.orange : PAL.yellow));
+      cell.position.set((cx-1)*0.58, 0.28, (cz-1.5)*0.6);
+      addPart(cell, 0.05, (cx-1)*0.45);
+    }
+  // cream busbar plate — floats highest
+  addPart(new THREE.Mesh(new THREE.BoxGeometry(1.9,0.07,2.55), matFlat(0xF3E9CF)), 0.95);
+  // orange terminal caps
+  for (const s of [-1,1])
+    addPart(new THREE.Mesh(new THREE.BoxGeometry(0.34,0.22,0.34), matFlat(PAL.deep)),
+            1.15, s*0.7);
+  function applyPack(t){
+    pack.visible = t > 0.003;
+    if (!pack.visible) return;
+    pack.position.y = 0.16 - t*0.95;
+    for (const m of packParts) m.position.copy(m.userData.base).addScaledVector(m.userData.exp, t);
+  }
+
+  /* --- scroll timeline: keyframes across the whole story (fractions of P).
+     Camera position + look target + car orientation + scene colour + pack
+     fan, all interpolated by global scroll progress. K0 arrival keeps the
+     live free-spin; K6 lands exactly on the game chase-cam pose. --- */
+  const EU = (x,y,z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z));
+  // `side` = screen-space lateral aim offset (fraction of view distance).
+  // +side aims the camera right, pushing the car to screen-LEFT; -side to the
+  // RIGHT. Set per keyframe so the car sits in the empty half opposite the text.
+  const KEYS = [
+    { at:0.00, cam:[0,1.7,-6.8], look:[0,0.8,0],  q:EU(0,0,0),        col:0xffffff, pack:0, side:0    },
+    { at:0.15, cam:[5.4,2.1,-5.8],look:[0,1.0,0],  q:EU(.05,-0.7,0),  col:0xF3E9CF, pack:0, side:-0.28},
+    { at:0.35, cam:[1.6,0.75,7.6],look:[0,1.35,0], q:EU(0,0.5,0),     col:0x241C15, pack:1, side:-0.10},
+    { at:0.54, cam:[-7.2,4.8,-10.5],look:[0,1.1,0],q:EU(.04,1.05,0),  col:0xE8542F, pack:0, side:0.28 },
+    { at:0.70, cam:[12.8,3.0,0.5],look:[0,1.0,0],  q:EU(0,1.9,0),     col:0x4E9FCE, pack:0, side:-0.26},
+    { at:0.87, cam:[0,8.8,-21],  look:[0,2.0,5],   q:EU(0,0.05,0),    col:0xE3DCA8, pack:0, side:-0.12},
+    { at:1.00, cam:[0,14,-30],   look:[0,2.0,8],   q:EU(0,0,0),       col:0xE3DCA8, pack:0, side:0    },
+  ];
+  for (const k of KEYS) { k.camV = new THREE.Vector3(...k.cam);
+    k.lookV = new THREE.Vector3(...k.look); k.colC = new THREE.Color(k.col); }
   const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
 
-  const Q_ID = new THREE.Quaternion();          // identity = rear view, plate readable
   const qFree = new THREE.Quaternion();         // free (drag + auto-spin) orientation
+  const qCar  = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
   const qDrag = new THREE.Quaternion();
   const eX = new THREE.Vector3(1,0,0), eY = new THREE.Vector3(0,1,0);
+  const vDir = new THREE.Vector3(), vRight = new THREE.Vector3();
+
+  // DOM the timeline drives
+  const heroTitle = document.getElementById('heroTitle');
+  const railFill = document.getElementById('railFill');
+  const railPct  = document.getElementById('railPct');
+  const chargeRail = document.getElementById('chargeRail');
 
   let dragging = false, active = true, p = 0;
   let lastX = 0, lastY = 0, lastT = performance.now();
 
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const scrollMax = () => Math.max(1, document.documentElement.scrollHeight - innerHeight);
 
   /* --- scroll: drive progress + start-screen visibility --- */
   function onScroll(){
-    p = clamp01(scrollY / innerHeight);
-    startWrap.classList.toggle('on', p > 0.9);
-    scrollHint.style.opacity = String(Math.max(0, 1 - p*3));
+    p = clamp01(scrollY / scrollMax());
+    startWrap.classList.toggle('on', p > 0.965);
+    scrollHint.style.opacity = String(Math.max(0, 1 - p*6));
   }
   addEventListener('scroll', onScroll, { passive:true });
 
@@ -1482,17 +1891,46 @@ const Hero = (() => {
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
 
-    if (!dragging && p < 0.05) {          // idle cinematic auto-spin
+    // arrival zone: live auto-spin (+ drag) drives the free quaternion
+    if (!dragging && p < 0.04) {
       qYaw.setFromAxisAngle(eY, dt * 0.4);
       qFree.premultiply(qYaw);
     }
-    const e = smoothstep(p);
-    car.quaternion.copy(qFree).slerp(Q_ID, e);
 
-    camPos.lerpVectors(camNear, camFar, e);
-    lookAt.lerpVectors(lookNear, lookFar, e);
+    // locate the active keyframe segment for the current scroll progress
+    let i = 0;
+    while (i < KEYS.length - 2 && p > KEYS[i+1].at) i++;
+    const a = KEYS[i], b = KEYS[i+1];
+    const t = smoothstep(clamp01((p - a.at) / (b.at - a.at)));
+
+    camPos.lerpVectors(a.camV, b.camV, t);
+    lookAt.lerpVectors(a.lookV, b.lookV, t);
     hCam.position.copy(camPos);
+    // slide the aim sideways (screen space) so the car sits opposite the text
+    const side = a.side + (b.side - a.side) * t;
+    if (side) {
+      vDir.subVectors(lookAt, camPos);
+      const dist = vDir.length(); vDir.normalize();
+      vRight.crossVectors(vDir, eY).normalize();
+      lookAt.addScaledVector(vRight, side * dist);
+    }
     hCam.lookAt(lookAt);
+    hScene.background.copy(a.colC).lerp(b.colC, t);
+
+    // car orientation: first segment blends live free-spin → K1 pose
+    if (i === 0) qCar.copy(qFree).slerp(b.q, t);
+    else         qCar.copy(a.q).slerp(b.q, t);
+    car.quaternion.copy(qCar);
+
+    applyPack(a.pack + (b.pack - a.pack) * t);
+    // warm the world in over the final stretch: sand ground + start line
+    revealEnv(clamp01((p - 0.80) / 0.16));
+
+    // HUD-ish chrome the scroll drives
+    const pct = Math.round(p * 100);
+    chargeRail.style.setProperty('--charge', pct + '%');
+    railPct.textContent = pct + '%';
+    if (heroTitle) heroTitle.style.opacity = String(clamp01(1 - p * 5));
 
     renderer.render(hScene, hCam);
   }
@@ -1516,10 +1954,153 @@ const Hero = (() => {
     active = true; lastT = performance.now();
     heroPhaseActive = true;
     document.body.classList.add('hero-phase');
-    scrollTo(0, scrollToEnd ? innerHeight : 0);
+    scrollTo(0, scrollToEnd ? scrollMax() : 0);
     onScroll();
   }
   return { fadeOut, show };
+})();
+
+/* =====================================================================
+   INTERACTIONS — preloader, scroll reveals, animated counters, section
+   theming, charge-rail nav, ambient sound toggle. DOM-only; never touches
+   the game loop or WebGL context.
+   ===================================================================== */
+(function Interactions(){
+  const $ = s => document.querySelector(s);
+
+  /* --- preloader: KASI mark charges to full, then dissolves --- */
+  {
+    const pl = $('#preloader');
+    const bar = pl.querySelector('.pbar i');
+    const fill = pl.querySelector('.mark .fill');
+    const label = pl.querySelector('.plabel');
+    let prog = 0, loaded = false;
+    const t0 = performance.now();
+    addEventListener('load', () => { loaded = true; });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {});
+    (function tick(){
+      const elapsed = performance.now() - t0;
+      const cap = (loaded && elapsed > 650) ? 100 : 90;   // hold near-full until ready
+      prog += (cap - prog) * 0.07;
+      if (cap === 100 && prog > 99.3) prog = 100;
+      const v = Math.min(100, prog);
+      bar.style.width = v + '%';
+      fill.style.clipPath = 'inset(' + (100 - v).toFixed(1) + '% 0 0 0)';
+      if (v >= 100) { label.textContent = 'Full charge'; pl.classList.add('done'); return; }
+      requestAnimationFrame(tick);
+    })();
+  }
+
+  /* --- animated counters --- */
+  function runCount(span){
+    const target = +span.dataset.count;
+    const sep = span.dataset.sep === '1';
+    const dur = 1250, t0 = performance.now();
+    (function step(now){
+      const k = Math.min(1, (now - t0) / dur);
+      const val = Math.round(target * (1 - Math.pow(1 - k, 3)));
+      span.textContent = sep ? val.toLocaleString('en-US') : val;
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+
+  /* --- scroll reveal (one-shot); fires child counters on entry --- */
+  const revIO = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      e.target.classList.add('in');
+      e.target.querySelectorAll('[data-count]').forEach(runCount);
+      revIO.unobserve(e.target);
+    }
+  }, { threshold:0.25, rootMargin:'0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach(el => revIO.observe(el));
+
+  /* --- section theming: swap DOM palette as each block hits mid-screen --- */
+  const themeIO = new IntersectionObserver((entries) => {
+    for (const e of entries)
+      if (e.isIntersecting) document.body.dataset.theme = e.target.dataset.theme;
+  }, { rootMargin:'-48% 0px -48% 0px', threshold:0 });
+  document.querySelectorAll('#story [data-theme], .ticker[data-theme]')
+    .forEach(el => themeIO.observe(el));
+
+  /* --- charge-rail chapter ticks --- */
+  const ticks = $('#railTicks');
+  const chapters = [...document.querySelectorAll('#story .chapter')];
+  function layoutTicks(){
+    if (!ticks) return;
+    const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+    ticks.innerHTML = '';
+    chapters.forEach(sec => {
+      const b = document.createElement('button');
+      b.style.top = Math.min(100, sec.offsetTop / max * 100) + '%';
+      b.setAttribute('aria-label', 'Jump to ' + (sec.id || 'section'));
+      b.addEventListener('click', () => scrollTo({ top: sec.offsetTop, behavior:'smooth' }));
+      ticks.appendChild(b);
+    });
+  }
+  layoutTicks();
+  addEventListener('resize', layoutTicks);
+
+  /* --- ambient sound toggle (low drone layered on the game's AudioEngine) --- */
+  const st = $('#soundToggle');
+  let on = false, amb = null;
+  /* synthesized looping race-track ambience: a lowpassed engine/track rumble
+     (detuned oscillators with a slow swell, like cars passing) layered over a
+     band-limited wind/air bed from looping noise. No audio asset, seamless loop. */
+  function ambStart(){
+    AudioEngine.init();
+    if (!AudioEngine.ok || amb) return;
+    const c = AudioEngine.ctx, t = c.currentTime;
+    const master = c.createGain(); master.gain.value = 0; master.connect(c.destination);
+
+    // --- engine/track rumble: three detuned voices through a lowpass ---
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.value = 320; lp.Q.value = 0.6; lp.connect(master);
+    const rumble = c.createGain(); rumble.gain.value = 0.9; rumble.connect(lp);
+    const oscs = [];
+    [46, 69, 92].forEach((f, i) => {
+      const o = c.createOscillator(); o.type = i === 2 ? 'sine' : 'sawtooth';
+      o.frequency.value = f; o.detune.value = (i - 1) * 6;
+      o.connect(rumble); o.start(); oscs.push(o);
+    });
+    // slow swell (LFO on the rumble gain) — evokes engines rising and fading past
+    const swell = c.createOscillator(); swell.type = 'sine'; swell.frequency.value = 0.09;
+    const swellG = c.createGain(); swellG.gain.value = 0.35;
+    swell.connect(swellG); swellG.connect(rumble.gain); swell.start();
+    // faint pitch drift on the top voice so the loop never feels static
+    const drift = c.createOscillator(); drift.type = 'sine'; drift.frequency.value = 0.05;
+    const driftG = c.createGain(); driftG.gain.value = 8;
+    drift.connect(driftG); driftG.connect(oscs[2].frequency); drift.start();
+
+    // --- wind/air bed: looping noise buffer through a bandpass ---
+    const dur = 4;
+    const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noise = c.createBufferSource(); noise.buffer = buf; noise.loop = true;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = 520; bp.Q.value = 0.8;
+    const air = c.createGain(); air.gain.value = 0.18;
+    noise.connect(bp); bp.connect(air); air.connect(master); noise.start();
+
+    master.gain.setTargetAtTime(0.055, t, 1.6);
+    amb = { c, master, nodes: [...oscs, swell, drift, noise] };
+  }
+  function ambStop(){
+    if (!amb) return;
+    const { c, master, nodes } = amb;
+    master.gain.setTargetAtTime(0, c.currentTime, 0.4);
+    // tear the voices down after the fade so repeated toggles never stack
+    setTimeout(() => { nodes.forEach(n => { try { n.stop(); } catch (e) {} }); }, 900);
+    amb = null;
+  }
+  st.addEventListener('click', () => {
+    on = !on; st.classList.toggle('on', on);
+    if (on) ambStart(); else ambStop();
+  });
+  // duck ambience once the race ignites so it doesn't fight the engine
+  const sb = document.getElementById('startBtn');
+  if (sb) sb.addEventListener('click', ambStop);
 })();
 
 /* =====================================================================

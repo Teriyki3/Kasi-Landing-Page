@@ -296,6 +296,7 @@
     #driftTag{bottom:248px;}
     #driftScore{bottom:226px;}
     #progWrap{bottom:130px;}
+    .tGroup{bottom:calc(26px + env(safe-area-inset-bottom));}
   }
   .tGroup{position:absolute;bottom:26px;display:flex;gap:14px;align-items:flex-end;pointer-events:none;}
   .tGroup.left{left:20px;}
@@ -304,7 +305,6 @@
     background:rgba(58,46,34,.38);color:var(--cream);font-family:inherit;font-size:15px;
     letter-spacing:1px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;}
   .tBtn.gas{width:94px;height:94px;background:rgba(232,84,47,.5);}
-  .tBtn.small{width:58px;height:58px;font-size:10px;margin-bottom:12px;}
   .tBtn:active{background:rgba(232,84,47,.7);}
 
   /* ============ SCREENS ============ */
@@ -365,6 +365,35 @@
   .stat .val{font-size:34px;font-variant-numeric:tabular-nums;}
   .stat .val.hl{color:var(--orange);}
   .row{display:flex;gap:16px;}
+
+  /* ============================================================
+     MOBILE-ONLY OVERRIDES — placed last so they win on source order.
+     Desktop (>720px) is unaffected.
+     ============================================================ */
+  @media (max-width:720px){
+    /* fade the whole live HUD off at the finish: this removes the overlapping
+       top numbers, the pause button, and the gas/brake/steer/drift controls,
+       since all of them live inside #hud */
+    #hud{transition:opacity .45s ease;}
+    body.ended #hud{opacity:0;pointer-events:none;}
+    body.ended #hud *{pointer-events:none;}
+
+    /* results: full-width, top-aligned, scrollable so stats never overlap
+       the Retry/Menu buttons */
+    #results{align-items:stretch;justify-content:flex-start;overflow-y:auto;
+      padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+      background:linear-gradient(180deg,rgba(243,233,207,.98),rgba(243,233,207,.98));}
+    #results .stats{grid-template-columns:repeat(2,1fr);gap:12px 16px;
+      margin:12px 0 20px;width:100%;}
+    #results .stat .val{font-size:19px;}
+    #results .row{width:100%;gap:12px;margin-top:4px;}
+    #results .row .btn{flex:1;padding:15px 0;font-size:14px;letter-spacing:3px;}
+
+    /* final landing section: lift the intro copy up so the car + Start button
+       aren't crowded; car framing and #startWrap stay as-is */
+    .chapter.final{min-height:110vh;align-items:flex-start !important;
+      padding-top:12vh;padding-bottom:0;}
+  }
 </style>
 </head>
 <body data-theme="white">
@@ -534,7 +563,6 @@
       <button class="tBtn" data-key="right">&#9654;</button>
     </div>
     <div class="tGroup right">
-      <button class="tBtn small" data-key="hand">DRIFT</button>
       <button class="tBtn" data-key="down">BRAKE</button>
       <button class="tBtn gas" data-key="up">GAS</button>
     </div>
@@ -1728,6 +1756,14 @@ const Hero = (() => {
   const hCam = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 200);
   // heroCanvas is a transparent pointer-capture layer only; the hero scene is
   // drawn by the shared main renderer to avoid a second WebGL context.
+  // portrait/mobile framing: wider FOV + centered car so it's never cropped
+  const heroMQ = matchMedia('(max-width:720px)');
+  function heroViewport(){
+    hCam.aspect = innerWidth / innerHeight;
+    hCam.fov = heroMQ.matches ? 54 : 38;
+    hCam.updateProjectionMatrix();
+  }
+  heroViewport();
 
   // lights cloned from the game so shading matches at the crossfade
   hScene.add(new THREE.HemisphereLight(0xFFF3D6, 0xD9B87C, 0.9));
@@ -1880,10 +1916,7 @@ const Hero = (() => {
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
 
-  addEventListener('resize', () => {
-    hCam.aspect = innerWidth/innerHeight;
-    hCam.updateProjectionMatrix();
-  });
+  addEventListener('resize', heroViewport);
 
   function frame(){
     requestAnimationFrame(frame);
@@ -1905,9 +1938,13 @@ const Hero = (() => {
 
     camPos.lerpVectors(a.camV, b.camV, t);
     lookAt.lerpVectors(a.lookV, b.lookV, t);
+    // portrait: pull the camera back and centre the car so it's never cropped
+    if (heroMQ.matches) camPos.sub(lookAt).multiplyScalar(1.12).add(lookAt);
     hCam.position.copy(camPos);
     // slide the aim sideways (screen space) so the car sits opposite the text
-    const side = a.side + (b.side - a.side) * t;
+    // (disabled on mobile — sideMul 0 — to keep the car centred and fully visible)
+    const sideMul = heroMQ.matches ? 0 : 1;
+    const side = (a.side + (b.side - a.side) * t) * sideMul;
     if (side) {
       vDir.subVectors(lookAt, camPos);
       const dist = vDir.length(); vDir.normalize();
@@ -2178,6 +2215,7 @@ const Game = (() => {
     G.countStart = performance.now();
     Hero.fadeOut();                       // dissolve the white hero stage
     document.body.classList.add('playing');
+    document.body.classList.remove('ended');
     ui.results.style.display = 'none';
     ui.count.style.display = 'flex';
     ui.hud.style.display = 'block';
@@ -2190,6 +2228,7 @@ const Game = (() => {
     ui.results.style.display = 'none';
     ui.count.style.display = 'none';
     document.body.classList.remove('playing');
+    document.body.classList.remove('ended');
     Hero.show(scrollToEnd);               // back to the interactive hero
     ui.bestLine.textContent = G.bestTime ? 'SESSION BEST — ' + fmt(G.bestTime) : '';
     reset();
@@ -2220,6 +2259,7 @@ const Game = (() => {
     ui.rRegen.textContent = G.regen.toFixed(2) + ' KWH';
     ui.results.style.display = 'flex';
     ui.results.classList.add('show');
+    document.body.classList.add('ended');   // fade the mobile HUD/controls off
     Cinema.until = 0;                 // first shot cuts immediately
   }
 

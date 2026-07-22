@@ -1918,6 +1918,121 @@ const Hero = (() => {
 
   addEventListener('resize', heroViewport);
 
+  /* =====================================================================
+     ASCII "revealer flashlight" post-effect (desktop hover only).
+     Two-pass: hScene → offscreen RT → fullscreen shader that turns a soft
+     circle around the cursor into complementary-coloured monospace glyphs,
+     feathered at the edge; everything else is the normal 3D render.
+     ===================================================================== */
+  const asciiOn = matchMedia('(pointer:fine)').matches;   // any device with a mouse
+  let renderHero = () => renderer.render(hScene, hCam);   // default path
+
+  if (asciiOn) {
+    // --- glyph atlas: density string baked into a horizontal strip ---
+    const DENSITY = 'Ñ@#W$9876543210?!abc;:+=-,._ ';
+    const N = DENSITY.length, GLY = 48;
+    const ac = document.createElement('canvas');
+    ac.width = GLY * N; ac.height = GLY;
+    const actx = ac.getContext('2d');
+    function drawAtlas(){
+      actx.clearRect(0, 0, ac.width, ac.height);
+      actx.fillStyle = '#fff';
+      actx.font = '700 ' + Math.round(GLY * 0.82) + "px 'IBM Plex Mono', ui-monospace, monospace";
+      actx.textAlign = 'center'; actx.textBaseline = 'middle';
+      for (let i = 0; i < N; i++) actx.fillText(DENSITY[i], i * GLY + GLY / 2, GLY / 2 + 1);
+    }
+    drawAtlas();
+    const atlasTex = new THREE.CanvasTexture(ac);
+    atlasTex.minFilter = THREE.LinearFilter; atlasTex.magFilter = THREE.LinearFilter;
+    atlasTex.generateMipmaps = false;
+    atlasTex.wrapS = atlasTex.wrapT = THREE.ClampToEdgeWrapping;
+    // rebake once the monospace webfont is ready so glyph shapes are correct
+    if (document.fonts && document.fonts.ready)
+      document.fonts.ready.then(() => { drawAtlas(); atlasTex.needsUpdate = true; });
+
+    // --- offscreen render target sized to the drawing buffer ---
+    const dbs = new THREE.Vector2();
+    renderer.getDrawingBufferSize(dbs);
+    const heroRT = new THREE.WebGLRenderTarget(dbs.x, dbs.y,
+      { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat });
+
+    // --- fullscreen quad + ASCII shader ---
+    const uniforms = {
+      u_scene:  { value: heroRT.texture },
+      u_atlas:  { value: atlasTex },
+      u_res:    { value: new THREE.Vector2(dbs.x, dbs.y) },
+      u_cell:   { value: 10 * renderer.getPixelRatio() },
+      u_count:  { value: N },
+      u_mouse:  { value: new THREE.Vector2(-1e4, -1e4) },
+      u_radius: { value: 0 },
+      u_feather:{ value: 0 },
+    };
+    const asciiMat = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+      fragmentShader: `
+        precision highp float;
+        varying vec2 vUv;
+        uniform sampler2D u_scene, u_atlas;
+        uniform vec2 u_res, u_mouse;
+        uniform float u_cell, u_count, u_radius, u_feather;
+        float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
+        void main(){
+          vec2 frag = vUv * u_res;
+          vec3 normal = texture2D(u_scene, vUv).rgb;         // hi-res passthrough
+          vec2 cellOrigin = floor(frag / u_cell) * u_cell;
+          vec2 cellCenter = (cellOrigin + 0.5 * u_cell) / u_res;
+          vec3 cellCol = texture2D(u_scene, cellCenter).rgb;
+          float b = luma(cellCol);
+          float idx = floor(clamp(1.0 - b, 0.0, 0.999) * u_count);
+          vec2 local = fract(frag / u_cell);
+          float glyph = texture2D(u_atlas, vec2((idx + local.x) / u_count, local.y)).r;
+          vec3 comp = vec3(1.0) - cellCol;                   // complementary colour
+          vec3 ascii = mix(cellCol * 0.12, comp, glyph);     // glyph on a dark cell
+          float d = distance(frag, u_mouse);
+          float m = 1.0 - smoothstep(u_radius - u_feather, u_radius, d);
+          gl_FragColor = vec4(mix(normal, ascii, m), 1.0);
+        }`,
+      depthTest: false, depthWrite: false,
+    });
+    const postScene = new THREE.Scene();
+    const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), asciiMat));
+
+    // --- cursor tracking + flashlight grow/shrink ---
+    const mTarget = new THREE.Vector2(-1e4, -1e4);
+    let radTarget = 0;
+    const pr = () => renderer.getPixelRatio();
+    addEventListener('pointermove', e => {
+      mTarget.set(e.clientX * pr(), (innerHeight - e.clientY) * pr());   // y-flip to UV space
+      radTarget = 0.18 * u_resMin();
+    });
+    document.addEventListener('mouseleave', () => { radTarget = 0; });
+    addEventListener('blur', () => { radTarget = 0; });
+    function u_resMin(){ return Math.min(uniforms.u_res.value.x, uniforms.u_res.value.y); }
+
+    function resizeAscii(){
+      renderer.getDrawingBufferSize(dbs);
+      heroRT.setSize(dbs.x, dbs.y);
+      uniforms.u_res.value.set(dbs.x, dbs.y);
+      uniforms.u_cell.value = 10 * renderer.getPixelRatio();
+    }
+    addEventListener('resize', resizeAscii);
+
+    renderHero = () => {
+      // ease flashlight toward the cursor
+      uniforms.u_mouse.value.lerp(mTarget, 0.35);
+      uniforms.u_radius.value += (radTarget - uniforms.u_radius.value) * 0.15;
+      uniforms.u_feather.value = uniforms.u_radius.value * 0.45;
+      renderer.setRenderTarget(heroRT);
+      renderer.render(hScene, hCam);
+      renderer.setRenderTarget(null);
+      renderer.render(postScene, postCam);
+    };
+  }
+
   function frame(){
     requestAnimationFrame(frame);
     if (!active) return;
@@ -1969,7 +2084,7 @@ const Hero = (() => {
     railPct.textContent = pct + '%';
     if (heroTitle) heroTitle.style.opacity = String(clamp01(1 - p * 5));
 
-    renderer.render(hScene, hCam);
+    renderHero();
   }
   onScroll();
   frame();

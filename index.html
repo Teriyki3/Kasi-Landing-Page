@@ -1990,7 +1990,7 @@ const Hero = (() => {
           vec2 local = fract(frag / u_cell);
           float glyph = texture2D(u_atlas, vec2((idx + local.x) / u_count, local.y)).r;
           vec3 shade = clamp(cellCol * 0.62, 0.0, 1.0);       // darker shade, same hue
-          vec3 ascii = mix(vec3(1.0), shade, glyph);          // glyph on a white cell
+          vec3 ascii = mix(normal, shade, glyph);             // glyphs over the untouched render (transparent bg)
           float d = distance(frag, u_mouse);
           float m = 1.0 - smoothstep(u_radius - u_feather, u_radius, d);
           gl_FragColor = vec4(mix(normal, ascii, m), 1.0);

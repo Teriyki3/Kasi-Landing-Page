@@ -1387,9 +1387,44 @@ const Track = (() => {
    licence plate on the rear. Until the model loads, the procedural car
    stands in so nothing is ever empty.
    =================================================================== */
-const KASI_GREEN = 0x8FE04A;                       // light green livery
+const KASI_GREEN = 0x8FE04A;                       // KASI car marker (now gradient-coloured)
 const CAR = { template: null, box: null };
 const pendingCars = [];
+
+/* 4-colour length gradient for the KASI car, rear (t=0) → front tip (t=1):
+   purple-pink → light green → sky blue → dark blue */
+const GRAD = [
+  [0.00, new THREE.Color(0xBE6BE0)],   // rear — violet / purple-pink
+  [0.36, new THREE.Color(0x9BE86B)],   // light green
+  [0.70, new THREE.Color(0x5FC7F2)],   // sky blue
+  [1.00, new THREE.Color(0x16308A)],   // front tip — dark blue
+];
+const GRAD_FLIP = false;               // flip if the ends come out reversed
+function gradColor(t, out){
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  for (let i = 0; i < GRAD.length - 1; i++){
+    if (t <= GRAD[i+1][0]){
+      const f = (t - GRAD[i][0]) / (GRAD[i+1][0] - GRAD[i][0]);
+      return out.copy(GRAD[i][1]).lerp(GRAD[i+1][1], f);
+    }
+  }
+  return out.copy(GRAD[GRAD.length-1][1]);
+}
+const _gv = new THREE.Vector3(), _gc = new THREE.Color();
+function applyLengthGradient(mesh){     // bake per-vertex colours along car length (Z)
+  const geom = mesh.geometry = mesh.geometry.clone();
+  const pos = geom.attributes.position, n = pos.count;
+  const colors = new Float32Array(n * 3);
+  const zmin = CAR.box.min.z, span = (CAR.box.max.z - CAR.box.min.z) || 1;
+  for (let i = 0; i < n; i++){
+    _gv.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    let t = (_gv.z - zmin) / span;
+    if (GRAD_FLIP) t = 1 - t;
+    gradColor(t, _gc);
+    colors[i*3] = _gc.r; colors[i*3+1] = _gc.g; colors[i*3+2] = _gc.b;
+  }
+  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
 
 function makeKasiPlate(text){
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
@@ -1410,14 +1445,20 @@ const _tc = new THREE.Color();
 function buildGlbCar(tint, plateText){
   const wrap = new THREE.Group();
   const model = CAR.template.clone(true);
+  const gradient = (tint === KASI_GREEN);       // KASI car → full length gradient
+  if (gradient) model.updateMatrixWorld(true);  // world matrices for the Z lookup
   model.traverse(o => {
     if (!o.isMesh) return;
-    // recolour by material: the one saturated (livery) panel → tint;
-    // structural greys/blacks (wheels, wings, details) keep their own colour
-    const src = o.material && o.material.color ? o.material.color : _tc.setRGB(0.5,0.5,0.5);
-    const sat = Math.max(src.r, src.g, src.b) - Math.min(src.r, src.g, src.b);
-    const col = sat > 0.45 ? tint : src.clone();
-    o.material = matFlat(col); o.material.side = THREE.DoubleSide;
+    if (gradient) {
+      applyLengthGradient(o);
+      o.material = matFlat(0xffffff); o.material.vertexColors = true;
+    } else {
+      // AI cars: saturated livery panel → tint; structural greys/blacks kept
+      const src = o.material && o.material.color ? o.material.color : _tc.setRGB(0.5,0.5,0.5);
+      const sat = Math.max(src.r, src.g, src.b) - Math.min(src.r, src.g, src.b);
+      o.material = matFlat(sat > 0.45 ? tint : src.clone());
+    }
+    o.material.side = THREE.DoubleSide;
   });
   wrap.add(model);
   if (plateText) wrap.add(makeKasiPlate(plateText));

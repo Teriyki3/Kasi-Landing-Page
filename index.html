@@ -1384,15 +1384,12 @@ const Track = (() => {
    (light-green KASI livery for hero/player, livery tint for AI; wheels
    dark) so the look is clean and reads well under the hero ASCII effect.
    Normalised to sit on the ground, Z-forward, ~5 units long, with a KASI
-   licence plate on the rear. Until the 16 MB model loads, the procedural
-   car stands in so nothing is ever empty.
+   licence plate on the rear. Until the model loads, the procedural car
+   stands in so nothing is ever empty.
    =================================================================== */
 const KASI_GREEN = 0x8FE04A;                       // light green livery
 const CAR = { template: null, box: null };
 const pendingCars = [];
-const TYRE_MATS = [1,3,5,8], RIM_MATS = [0,2,4,7]; // material_N indices in the GLB
-const matIndexOf = m => { const n=(m&&m.name)||''; const k=n.indexOf('material_');
-  return k>=0 ? parseInt(n.slice(k+9)) : -1; };
 
 function makeKasiPlate(text){
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
@@ -1409,15 +1406,17 @@ function makeKasiPlate(text){
   return plate;
 }
 
+const _tc = new THREE.Color();
 function buildGlbCar(tint, plateText){
   const wrap = new THREE.Group();
   const model = CAR.template.clone(true);
   model.traverse(o => {
     if (!o.isMesh) return;
-    const idx = matIndexOf(o.material);
-    let col = tint;
-    if (TYRE_MATS.includes(idx)) col = 0x141414;         // tyres
-    else if (RIM_MATS.includes(idx)) col = 0x30302e;     // rims
+    // recolour by material: the one saturated (livery) panel → tint;
+    // structural greys/blacks (wheels, wings, details) keep their own colour
+    const src = o.material && o.material.color ? o.material.color : _tc.setRGB(0.5,0.5,0.5);
+    const sat = Math.max(src.r, src.g, src.b) - Math.min(src.r, src.g, src.b);
+    const col = sat > 0.45 ? tint : src.clone();
     o.material = matFlat(col); o.material.side = THREE.DoubleSide;
   });
   wrap.add(model);
@@ -1955,18 +1954,19 @@ const Hero = (() => {
   const railPct  = document.getElementById('railPct');
   const chargeRail = document.getElementById('chargeRail');
 
-  let dragging = false, active = true, p = 0;
+  let dragging = false, active = true, p = 0, pTarget = 0;
   let lastX = 0, lastY = 0, lastT = performance.now();
 
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const scrollMax = () => Math.max(1, document.documentElement.scrollHeight - innerHeight);
 
-  /* --- scroll: drive progress + start-screen visibility --- */
+  /* --- scroll: set the TARGET progress; frame() eases p toward it so the
+     twist stays buttery regardless of wheel-notch granularity --- */
   function onScroll(){
-    p = clamp01(scrollY / scrollMax());
-    startWrap.classList.toggle('on', p > 0.965);
-    scrollHint.style.opacity = String(Math.max(0, 1 - p*6));
+    pTarget = clamp01(scrollY / scrollMax());
+    startWrap.classList.toggle('on', pTarget > 0.965);
+    scrollHint.style.opacity = String(Math.max(0, 1 - pTarget*6));
   }
   addEventListener('scroll', onScroll, { passive:true });
 
@@ -2132,6 +2132,9 @@ const Hero = (() => {
     if (!active) return;
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
+
+    // ease scroll progress toward its target → buttery twist (no stepping)
+    p += (pTarget - p) * (1 - Math.exp(-dt * 7));
 
     // arrival zone: live auto-spin (+ drag) drives the free quaternion
     if (!dragging && p < 0.04) {

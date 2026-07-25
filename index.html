@@ -151,11 +151,9 @@
      bottom-left accent so neither overlaps the live car in the frame */
   #heroTitle{position:absolute;inset:0;z-index:1;pointer-events:none;
     transition:opacity .4s ease;}
-  #heroTitle .kasi{position:absolute;left:50%;top:clamp(24px,7vh,64px);
-    transform:translateX(-50%);text-align:center;
-    font-family:var(--font-display);font-weight:900;
-    font-size:clamp(40px,9vw,110px);line-height:1;letter-spacing:-.03em;
-    color:var(--ink);opacity:.5;text-transform:uppercase;}
+  #heroTitle .kasi{position:absolute;left:50%;top:clamp(20px,6vh,56px);
+    transform:translateX(-50%);width:clamp(220px,34vw,540px);height:auto;
+    display:block;pointer-events:none;}
   #heroTitle .tag{position:absolute;left:clamp(24px,7vw,120px);bottom:88px;
     max-width:min(340px,72vw);text-align:left;
     font-family:var(--font-mono);font-weight:500;
@@ -422,7 +420,7 @@
 <section id="landing">
   <canvas id="heroCanvas"></canvas>
   <div id="heroTitle">
-    <div class="kasi">KASI</div>
+    <img class="kasi" id="kasiLogo" alt="KASI">
     <div class="tag">Energy for the neighbourhood &nbsp;·&nbsp; <b>African-built EV batteries</b></div>
   </div>
   <div id="scrollHint">SCROLL TO PLAY<span class="arrow">&#8595;</span></div>
@@ -607,6 +605,8 @@
 <!-- F1 car model embedded as a base64 data-URI so it loads with no network
      fetch (works when index.html is opened directly from disk / file://) -->
 <script src="car_model.js"></script>
+<!-- KASI logo (extracted from the SVG) as a data-URI: hero title + car decal -->
+<script src="kasi_logo.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -1441,6 +1441,29 @@ function makeKasiPlate(text){
   return plate;
 }
 
+// KASI logo (data-URI from kasi_logo.js) → hero title image + car side decals
+const KASI_LOGO_SRC = (typeof window !== 'undefined' && window.KASI_LOGO) || 'kasi_logo.png';
+{ const el = document.getElementById('kasiLogo'); if (el) el.src = KASI_LOGO_SRC; }
+const LOGO_ASPECT = 1500 / 428;
+const logoTex = new THREE.TextureLoader().load(KASI_LOGO_SRC);
+logoTex.encoding = THREE.sRGBEncoding;
+function makeCarLogos(){                 // a KASI decal on each sidepod
+  const g = new THREE.Group(), b = CAR.box;
+  const len = b.max.z - b.min.z, halfW = (b.max.x - b.min.x) / 2;
+  const w = len * 0.32, h = w / LOGO_ASPECT;               // proportional to the car
+  const cy = b.min.y + (b.max.y - b.min.y) * 0.46;
+  const geo = new THREE.PlaneGeometry(w, h);
+  const mat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true,
+    alphaTest: 0.3, side: THREE.DoubleSide, depthWrite: false });
+  for (const s of [1, -1]){
+    const p = new THREE.Mesh(geo, mat);
+    p.position.set(s * halfW * 0.64, cy, 0);
+    p.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2;      // face outward
+    g.add(p);
+  }
+  return g;
+}
+
 const _tc = new THREE.Color();
 function buildGlbCar(tint, plateText){
   const wrap = new THREE.Group();
@@ -1461,6 +1484,7 @@ function buildGlbCar(tint, plateText){
     o.material.side = THREE.DoubleSide;
   });
   wrap.add(model);
+  if (gradient) wrap.add(makeCarLogos());       // KASI decal on the sidepods
   if (plateText) wrap.add(makeKasiPlate(plateText));
   return wrap;
 }

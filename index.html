@@ -10,13 +10,16 @@
 <style>
   /* ============ GLOBAL / RESET ============ */
   :root{
+    /* colour tokens — VALUES are swapped at runtime by the palette switcher
+       (applyScheme). Names stay fixed so every var(--token) usage recolours. */
     --cream:#F3E9CF; --ink:#3A2E22; --orange:#E8542F;
     --yellow:#F2C43D; --blue:#4E9FCE; --sand:#C9BE7E;
-    --green:#6FBF73;
+    --green:#6FBF73; --paper:#F3E9CF;
+    --ink-rgb:58,46,34; --paper-rgb:243,233,207;
     --font-display:'Unbounded','Arial Black',sans-serif;
     --font-body:'Archivo','Helvetica Neue',Arial,sans-serif;
     --font-mono:'IBM Plex Mono','Courier New',monospace;
-    /* live theme tokens — swapped per chapter by JS (body[data-theme]) */
+    /* live theme tokens — JS sets these per active section (setThemeFg) */
     --fg:#3A2E22; --fg-soft:rgba(58,46,34,.62); --hair:rgba(58,46,34,.18);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -58,14 +61,9 @@
   /* theme tokens per chapter (JS sets body[data-theme]); 3D scene paints
      the actual background, these drive DOM text/hairline colours */
   body{transition:none;}
-  body[data-theme="white"],body[data-theme="cream"]{
-    --fg:var(--ink); --fg-soft:rgba(58,46,34,.60); --hair:rgba(58,46,34,.16);}
-  body[data-theme="ink"]{
-    --fg:#F3E9CF; --fg-soft:rgba(243,233,207,.62); --hair:rgba(243,233,207,.20);}
-  body[data-theme="orange"]{
-    --fg:#2A1D12; --fg-soft:rgba(42,29,18,.66); --hair:rgba(42,29,18,.24);}
-  body[data-theme="blue"]{
-    --fg:#F3E9CF; --fg-soft:rgba(243,233,207,.66); --hair:rgba(243,233,207,.22);}
+  /* per-section --fg / --fg-soft / --hair are set by JS (setThemeFg), which
+     picks light-or-dark text from the active section's background luminance
+     in the current scheme — so both light and dark schemes stay legible. */
 
   /* story layer floats above the transparent hero canvas; only real
      interactive children capture pointer events, so drag-to-spin still
@@ -194,6 +192,15 @@
     background:var(--fg-soft);transition:background .3s;}
   #soundToggle.on .dot{background:var(--orange);box-shadow:0 0 8px var(--orange);}
 
+  /* ---- palette switcher (bird colour schemes) ---- */
+  #palettePicker{position:fixed;top:24px;left:24px;z-index:26;display:flex;
+    align-items:center;gap:8px;transition:opacity .4s ease;}
+  #palettePicker .pswatch{width:20px;height:20px;border-radius:50%;padding:0;
+    border:2px solid transparent;cursor:pointer;
+    box-shadow:0 0 0 1px var(--hair);transition:transform .2s,border-color .2s;}
+  #palettePicker .pswatch:hover{transform:scale(1.15);}
+  #palettePicker .pswatch.sel{border-color:var(--fg);transform:scale(1.15);}
+
   /* ---- grain overlay ---- */
   #grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.045;
     mix-blend-mode:multiply;
@@ -217,7 +224,7 @@
 
   /* ---- hide all story chrome once the race is live ---- */
   body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
-  body.playing #heroTitle,body.playing #grain{display:none;}
+  body.playing #heroTitle,body.playing #grain,body.playing #palettePicker{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -408,6 +415,9 @@
 
 <!-- ambience toggle -->
 <button id="soundToggle" aria-label="Toggle sound"><span class="dot"></span>SOUND</button>
+
+<!-- bird-palette colour-scheme switcher (populated by JS) -->
+<div id="palettePicker" aria-label="Colour scheme"></div>
 
 <!-- charge rail: scroll = state of charge -->
 <div id="chargeRail">
@@ -1994,16 +2004,18 @@ const Hero = (() => {
   // +side aims the camera right, pushing the car to screen-LEFT; -side to the
   // RIGHT. Set per keyframe so the car sits in the empty half opposite the text.
   const KEYS = [
-    { at:0.00, cam:[0,1.7,-6.8], look:[0,0.8,0],  q:EU(0,0,0),        col:0xffffff, pack:0, side:0    },
-    { at:0.15, cam:[5.4,2.1,-5.8],look:[0,1.0,0],  q:EU(.05,-0.7,0),  col:0xF3E9CF, pack:0, side:-0.28},
-    { at:0.35, cam:[1.6,0.75,7.6],look:[0,1.35,0], q:EU(0,0.5,0),     col:0x241C15, pack:1, side:-0.10},
-    { at:0.54, cam:[-7.2,4.8,-10.5],look:[0,1.1,0],q:EU(.04,1.05,0),  col:0xE8542F, pack:0, side:0.28 },
-    { at:0.70, cam:[12.8,3.0,0.5],look:[0,1.0,0],  q:EU(0,1.9,0),     col:0x4E9FCE, pack:0, side:-0.26},
-    { at:0.87, cam:[0,8.8,-21],  look:[0,2.0,5],   q:EU(0,0.05,0),    col:0xE3DCA8, pack:0, side:-0.12},
-    { at:1.00, cam:[0,14,-30],   look:[0,2.0,8],   q:EU(0,0,0),       col:0xE3DCA8, pack:0, side:0    },
+    { at:0.00, cam:[0,1.7,-6.8], look:[0,0.8,0],  q:EU(0,0,0),        stop:'white', pack:0, side:0    },
+    { at:0.15, cam:[5.4,2.1,-5.8],look:[0,1.0,0],  q:EU(.05,-0.7,0),  stop:'cream', pack:0, side:-0.28},
+    { at:0.35, cam:[1.6,0.75,7.6],look:[0,1.35,0], q:EU(0,0.5,0),     stop:'ink',   pack:1, side:-0.10},
+    { at:0.54, cam:[-7.2,4.8,-10.5],look:[0,1.1,0],q:EU(.04,1.05,0),  stop:'orange',pack:0, side:0.28 },
+    { at:0.70, cam:[12.8,3.0,0.5],look:[0,1.0,0],  q:EU(0,1.9,0),     stop:'blue',  pack:0, side:-0.26},
+    { at:0.87, cam:[0,8.8,-21],  look:[0,2.0,5],   q:EU(0,0.05,0),    stop:'gold',  pack:0, side:-0.12},
+    { at:1.00, cam:[0,14,-30],   look:[0,2.0,8],   q:EU(0,0,0),       stop:'gold',  pack:0, side:0    },
   ];
   for (const k of KEYS) { k.camV = new THREE.Vector3(...k.cam);
-    k.lookV = new THREE.Vector3(...k.look); k.colC = new THREE.Color(k.col); }
+    k.lookV = new THREE.Vector3(...k.look); k.colC = new THREE.Color(0xffffff); }
+  // recolour the scroll scene backgrounds from a scheme's stop map
+  function setStops(stops){ for (const k of KEYS) if (stops[k.stop]) k.colC.set(stops[k.stop]); }
   const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
 
   const qFree = new THREE.Quaternion();         // free (drag + auto-spin) orientation
@@ -2271,7 +2283,7 @@ const Hero = (() => {
     scrollTo(0, scrollToEnd ? scrollMax() : 0);
     onScroll();
   }
-  return { fadeOut, show };
+  return { fadeOut, show, setStops };
 })();
 
 /* =====================================================================
@@ -2329,13 +2341,79 @@ const Hero = (() => {
   }, { threshold:0.25, rootMargin:'0px 0px -8% 0px' });
   document.querySelectorAll('.rv').forEach(el => revIO.observe(el));
 
+  /* =====================================================================
+     BIRD PALETTE SWITCHER — 5 colour schemes drawn from the lilac-breasted
+     roller (lilac, turquoise, indigo, green, gold). Swaps the CSS token
+     VALUES + the scroll scene-background stops; choice persists.
+     ===================================================================== */
+  const root = document.documentElement;
+  const hexRgb = h => { const n = parseInt(h.slice(1), 16);
+    return [(n>>16)&255, (n>>8)&255, n&255]; };
+  const lum = h => { const [r,g,b] = hexRgb(h);
+    return (0.2126*r + 0.7152*g + 0.0722*b) / 255; };
+  // each scheme: token colours + paper(light text) + ink(dark text) + stops map
+  const SCHEMES = [
+    { name:'Savanna', cream:'#F4ECD6', ink:'#241E44', paper:'#F6EFDA', orange:'#B168C4',
+      yellow:'#E6B84F', blue:'#33B4D1', green:'#8FC978', sand:'#E5D6A2',
+      stops:{ white:'#F4ECD6', cream:'#EBDFB8', ink:'#241E44', orange:'#B168C4', blue:'#33B4D1', gold:'#E7D3A0' } },
+    { name:'Jewel', cream:'#20264F', ink:'#161C40', paper:'#EAF2F6', orange:'#33B4D1',
+      yellow:'#E6B84F', blue:'#8A5CD0', green:'#8FC978', sand:'#151A3B',
+      stops:{ white:'#20264F', cream:'#182046', ink:'#0F1436', orange:'#33B4D1', blue:'#8A5CD0', gold:'#2A3266' } },
+    { name:'Turquoise', cream:'#EAF5F5', ink:'#123A4A', paper:'#F2FAFA', orange:'#2AA9C9',
+      yellow:'#E6C25A', blue:'#7A5CC8', green:'#8FC978', sand:'#CFE7E6',
+      stops:{ white:'#EAF5F5', cream:'#D6ECEC', ink:'#123A4A', orange:'#2AA9C9', blue:'#7A5CC8', gold:'#E7D3A0' } },
+    { name:'Lilac', cream:'#F4ECF4', ink:'#3A1E4A', paper:'#FAF2FA', orange:'#C05CC4',
+      yellow:'#E6B84F', blue:'#33B4D1', green:'#8FC978', sand:'#E7D2E6',
+      stops:{ white:'#F4ECF4', cream:'#EBD9EB', ink:'#3A1E4A', orange:'#C05CC4', blue:'#33B4D1', gold:'#E7D3A0' } },
+    { name:'Roller', cream:'#F2E9CE', ink:'#1E2352', paper:'#F6EFDA', orange:'#7A3FD0',
+      yellow:'#F2C43D', blue:'#1FA6CE', green:'#5FB86B', sand:'#DFC98C',
+      stops:{ white:'#F2E9CE', cream:'#E4D2A0', ink:'#1E2352', orange:'#7A3FD0', blue:'#1FA6CE', gold:'#D2B25C' } },
+  ];
+  let curScheme = Math.max(0, Math.min(SCHEMES.length-1,
+    parseInt(localStorage.getItem('kasiScheme'), 10) || 0));
+
+  function setThemeFg(name){                 // pick light/dark text from bg luminance
+    const S = SCHEMES[curScheme];
+    const bg = S.stops[name] || S.stops.white;
+    const light = lum(bg) < 0.5;             // dark bg → light text
+    const fg = light ? S.paper : S.ink, rgb = hexRgb(fg).join(',');
+    root.style.setProperty('--fg', fg);
+    root.style.setProperty('--fg-soft', 'rgba(' + rgb + ',.62)');
+    root.style.setProperty('--hair', 'rgba(' + rgb + ',.2)');
+  }
+  function applyScheme(i){
+    curScheme = i; const S = SCHEMES[i];
+    for (const t of ['cream','ink','orange','yellow','blue','green','sand','paper'])
+      root.style.setProperty('--' + t, S[t]);
+    root.style.setProperty('--ink-rgb', hexRgb(S.ink).join(','));
+    root.style.setProperty('--paper-rgb', hexRgb(S.paper).join(','));
+    if (typeof Hero !== 'undefined' && Hero.setStops) Hero.setStops(S.stops);
+    setThemeFg(document.body.dataset.theme || 'white');
+    [...picker.children].forEach((b, k) => b.classList.toggle('sel', k === i));
+    try { localStorage.setItem('kasiScheme', i); } catch (e) {}
+  }
+
+  const picker = $('#palettePicker');
+  SCHEMES.forEach((S, i) => {
+    const b = document.createElement('button');
+    b.className = 'pswatch'; b.style.background = S.orange;
+    b.title = S.name; b.setAttribute('aria-label', S.name + ' scheme');
+    b.addEventListener('click', () => applyScheme(i));
+    picker.appendChild(b);
+  });
+
   /* --- section theming: swap DOM palette as each block hits mid-screen --- */
   const themeIO = new IntersectionObserver((entries) => {
     for (const e of entries)
-      if (e.isIntersecting) document.body.dataset.theme = e.target.dataset.theme;
+      if (e.isIntersecting) {
+        document.body.dataset.theme = e.target.dataset.theme;
+        setThemeFg(e.target.dataset.theme);
+      }
   }, { rootMargin:'-48% 0px -48% 0px', threshold:0 });
   document.querySelectorAll('#story [data-theme], .ticker[data-theme]')
     .forEach(el => themeIO.observe(el));
+
+  applyScheme(curScheme);        // paint the saved/default scheme now
 
   /* --- charge-rail chapter ticks --- */
   const ticks = $('#railTicks');

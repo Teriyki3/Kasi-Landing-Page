@@ -1,0 +1,1615 @@
+================================================================================
+
+        db    dP  db    .dP"Y8  dP""b8      88""Yb    db    88     88     Yb  dP
+       dPYb  dP  dPYb   `Ybo." dP   `"      88__dP   dPYb   88     88      YbdP
+      dP__Yb    dP__Yb  o.`Y8b Yb           88"Yb   dP__Yb  88  .o 88  .o   8P
+     dP""""Yb  dP""""Yb 8bodP'  YboodP      88  Yb dP""""Yb 88ood8 88ood8  dP
+
+              T H E   V I S U A L   S T O R Y B O A R D   ( ^_^ )
+       every screen, every motion, every easing curve — drawn in ASCII
+
+     Source of truth : index.html (2814 lines, single file)
+     Renderer        : three.js r128, ONE WebGLRenderer shared by hero + game
+     Written for     : a developer who has to rebuild, debug or extend this
+
+================================================================================
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  0.  HOW TO READ THIS DOCUMENT                                           │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+    ▓▓▓▓   opaque surface / filled UI          ····   transparent / see-through
+    ──►    motion vector, direction of travel  ~~~►   eased motion (non-linear)
+    ⟳      rotation about an axis              ⇢⇢⇢    scroll-driven (reversible)
+    [ p ]  hero scroll progress, 0.000 → 1.000 (NOT pixels — a normalised ratio)
+    ⟨fps⟩  happens every animation frame       ⟨IO⟩   fired by IntersectionObserver
+    ★      a detail that will bite you if you change it blindly
+
+    Coordinate conventions used throughout:
+      • three.js world:  +X east, +Z north, +Y up.  1 unit ≈ 1.1 m.
+      • Car forward is +Z in model space.  heading=0 means "facing +Z".
+      • fwd = (sin h, cos h)   right = (cos h, −sin h)      [2-D, XZ plane]
+      • Screen space: origin top-left, +Y down (CSS), as always.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  1.  THE STACK — a cross-section through the page                        │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Look at the page edge-on. Everything is fixed-position except #story, which
+  is the ONLY thing that actually has scroll height. This is the whole trick:
+  the page scrolls ~7 viewports of empty-ish text over a car that never moves
+  in the document flow.
+
+        VIEWER'S EYE
+             ●
+             │
+             ▼
+   z:100  ██████████████████████████  #preloader   (cream, dissolves at 100%)
+   z: 40  ░░░░░░░░░░░░░░░░░░░░░░░░░░  #grain       (140px fractal noise, α.045,
+                                                    mix-blend-mode: multiply)
+   z: 26  ◉◉◉◉◉                 ⬭SOUND #palettePicker (TL) / #soundToggle (TR)
+   z: 25                          ▮▮  #chargeRail  (right edge, vertical)
+   z: 20  ██████████████████████████  .screen      (#countdown/#pause/#results)
+   z: 16  ┆text┆ ┆text┆ ┆text┆ ┆text┆  #story      ← THE SCROLLER
+                                                    pointer-events:none except
+                                                    <a> and <button> ★
+   z: 15  ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈  #landing    (#heroCanvas + #heroTitle +
+                                                    #scrollHint + #startWrap)
+   z: 10  ┈┈┈┈┈ HUD ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈  #hud         (display:none until race)
+   z:  5  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  .tilt.top / .tilt.bot (fake tilt-shift)
+   z:  0  ██████████████████████████  <canvas>     three.js, position:fixed,
+                                                    inset:0 — prepended to body
+
+  ★ #heroCanvas draws NOTHING. It is a transparent pointer-capture surface so
+    drag-to-tumble works. The hero 3-D scene is rendered by the SAME shared
+    renderer as the game, into the z:0 canvas. Two scenes, two cameras, one
+    GL context — deliberately, to avoid a second context on mobile.
+
+  ★ Class gates that reshape the whole stack:
+
+      body.hero-phase   →  .tilt and #hud are visibility:hidden
+      body.playing      →  #story, #chargeRail, #soundToggle, #heroTitle,
+                           #grain, #palettePicker all display:none
+                           + overflow:hidden (scroll locked)
+      body.ended        →  (mobile only) #hud fades to 0 over .45s
+      #landing.fade     →  opacity 0 over .8s
+      #landing.gone     →  display:none (added on transitionend)
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  2.  FRAME 00 — PRELOADER  "KASI charges to full"                        │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Full-bleed cream. Nothing else exists yet. The wordmark fills from the
+  BOTTOM UP like a battery, in orange, over the ink-coloured base copy.
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                                                                        │
+  │                                                                        │
+  │                                                                        │
+  │                    ██  ██  ████  ████  ██                              │
+  │                    ██ ██  ██  ██ ██    ██        ← ink base layer      │
+  │                    ████   ██████ ████  ██                              │
+  │                    ██ ██  ██  ██    ██ ██                              │
+  │                    ██  ██ ██  ██ ████  ██                              │
+  │                    ▓▓  ▓▓ ▓▓  ▓▓ ▓▓▓▓  ▓▓        ← orange .fill,       │
+  │                    ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▲       clip-path rises     │
+  │                                            │                           │
+  │                    ────────────────────────┘  clip-path:inset(X% 0 0 0)│
+  │                                               X = 100 − progress       │
+  │                    ▬▬▬▬▬▬▬▬▬▬▬▬▬▬░░░░░░░░       #pbar i, width = prog% │
+  │                                                                        │
+  │                    I N I T I A L I S I N G   C E L L S …               │
+  │                                                                        │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  MOTION SPEC — ⟨fps⟩ loop, not a CSS transition:
+
+     prog += (cap − prog) * 0.07          exponential approach, ~14 frames
+                                          to close 63% of the remaining gap
+     cap  =  90   while (!window.load || elapsed <= 650 ms)
+             100  once BOTH conditions true
+
+  So the bar visibly STALLS at 90% waiting for the load event. That stall is
+  intentional — it reads as "charging the last cells". The moment cap flips to
+  100 the bar snaps the last 10% in ~30 frames, prog is force-clamped to 100
+  when it exceeds 99.3, the label swaps to "Full charge", and .done is added:
+
+     #preloader.done  →  opacity 0 + visibility hidden, .7s ease
+
+  ★ The label text change and the fade happen in the SAME frame. There is no
+    beat where you read "Full charge" at full opacity. If you want that beat,
+    you need a setTimeout before addClass('done').
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  3.  FRAME 01 — ARRIVAL  [ p = 0.000 ]                                   │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  The preloader dissolves onto this. Pure white 3-D background (scheme stop
+  'white'). The car is dead-centre, slowly rotating, seen from BEHIND-LOW.
+
+  Camera pose K0:  position (0, 1.7, −6.8)   lookAt (0, 0.8, 0)   side 0
+  Car quaternion:  qFree — a LIVE, free-running quaternion (see below)
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ◉◉◉◉◉                                                        ⬭ SOUND   │← z26
+  │ ↑ 5 palette swatches                        sound toggle ↑             │
+  │                                                                        │
+  │                    ██╗  ██╗ █████╗ ███████╗██╗                         │
+  │                    ██║ ██╔╝██╔══██╗██╔════╝██║      ← #heroTitle .kasi │
+  │                    █████╔╝ ███████║███████╗██║        (SVG data-URI,   │
+  │                    ██╔═██╗ ██╔══██║╚════██║██║         width 34vw,     │
+  │                    ██║  ██╗██║  ██║███████║██║         top ~6vh)       │
+  │                                                                  ▲     │
+  │                          ___                                     █     │
+  │                     ,---'   `---.                                █     │
+  │              ()====[  KASI CAR   ]====()   ⟳ auto-spin           █  ▮  │
+  │                     `---._____.---'         0.4 rad/s about Y    █  ▮  │
+  │                        o       o                                 █  ▮  │← #chargeRail
+  │                   ░░░░░░░░░░░░░░░░░  ← elliptical shadow blob    █  ▮  │  --charge:0%
+  │                                        (α .12, scale .72×1.05)   ▮  ▮  │
+  │                                                                  ▮  ▮  │
+  │  ENERGY FOR THE NEIGHBOURHOOD                                    ▮  ▮  │
+  │  ·  AFRICAN-BUILT EV BATTERIES         ← .tag, mono, 6px tracking      │
+  │                          S C R O L L   T O   P L A Y                   │
+  │                                    ↓        ← bobs ±6px, 1.8s ease-i-o │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  ── 3a. THE IDLE SPIN ──────────────────────────────────────────────────────
+
+  Runs only while  (!dragging && p < 0.04):
+
+        qYaw  = quaternion(axis = worldY, angle = dt * 0.4)
+        qFree = qYaw ⊗ qFree            ← PREmultiply: world-space Y, not local
+
+  0.4 rad/s ≈ one full revolution every 15.7 seconds. Slow enough to read as
+  "displayed", not "spinning".
+
+  ── 3b. DRAG-TO-TUMBLE ─────────────────────────────────────────────────────
+
+  Guard:  onDown() returns immediately if p > 0.05.  Once you have scrolled
+  past 5%, the car is on rails and drag is dead. ★
+
+        pointerdown → canvas.setPointerCapture, cursor:grab → grabbing
+        pointermove → qFree = Rx(dy*0.006) ⊗ Ry(dx*0.008) ⊗ qFree
+
+  Both premultiplied, so tumbling is in WORLD axes — the car does not develop
+  a local gimbal. Horizontal drag is 1.33× more sensitive than vertical.
+  There is NO inertia and NO damping on release. The car stops the instant
+  your finger stops. (The auto-spin resumes only if p is still < 0.04.)
+
+           drag right ──►          drag down
+              ⟳ +Y                    ⟳ +X
+            ___                      ___
+       ,---'   `---.  ⟳         ,---'   `---.
+      [   ▄▄▄▄▄▄   ]  →        [   ▄▄▄▄▄▄   ]  ↓ nose dips toward viewer
+       `---.___.---'            `---.___.---'
+
+  ── 3c. THE ASCII "REVEALER FLASHLIGHT"  ★ signature effect ────────────────
+
+  Desktop only — gated on matchMedia('(pointer:fine)'). A soft circle that
+  follows the cursor converts ONLY THE CAR into monospace glyphs. Background
+  is never converted. It is a genuine two-pass post-process:
+
+    PASS 1                          PASS 2 (fullscreen quad + ShaderMaterial)
+    ┌───────────────┐               ┌────────────────────────────────────┐
+    │ hScene.bg=null│  heroRT       │ frag:                              │
+    │ clear α=0     │ ─────────────►│  normal  = mix(u_bg, hi.rgb, hi.a) │
+    │ render car    │  RGBA texture │  cell    = texture(scene,cellCentre)│
+    └───────────────┘  α = car mask │  b       = luma(cell.rgb)          │
+                                    │  idx     = floor((1−b) * 29)       │
+                                    │  glyph   = atlas[idx][local uv]    │
+                                    │  ascii   = mix(white, cell*0.62,   │
+                                    │                 glyph)             │
+                                    │  ring    = 1 − smoothstep(         │
+                                    │              r−feather, r, dist)   │
+                                    │  out     = mix(normal, ascii,      │
+                                    │                ring * cell.a)      │
+                                    └────────────────────────────────────┘
+
+  Glyph atlas: a 29-character density ramp baked to a horizontal canvas strip,
+  48px per cell, IBM Plex Mono 700:
+
+        Ñ @ # W $ 9 8 7 6 5 4 3 2 1 0 ? ! a b c ; : + = - , . _ ␠
+        └── dark / dense ──────────────────────────► light / sparse ──┘
+
+    ★ The atlas is REBAKED once document.fonts.ready resolves, then
+      atlasTex.needsUpdate = true. Before that it renders in the fallback
+      monospace — a visible 1-frame glyph-shape pop on cold load.
+
+  The flashlight geometry:
+
+        cell size   = 10 * devicePixelRatio   (screen px per glyph)
+        radius      → 0.18 * min(bufferW, bufferH)  on pointermove
+        feather     = 0.45 * radius            (soft falloff band)
+        mouse lerp  = 0.35/frame   (cursor trails slightly — deliberate lag)
+        radius lerp = 0.15/frame   (grows/shrinks over ~15 frames)
+
+  Sleep gate — the effect fades out as you scroll and then short-circuits:
+
+        gate = 1 − clamp01(scrollY / (innerHeight * 0.25))
+        if (radius < 0.5)  →  plain renderer.render(hScene, hCam); return;
+
+  So by 25% of one viewport scrolled, the post-process is completely bypassed
+  and you are paying zero cost for it. Radius also drops to 0 on
+  document mouseleave and window blur.
+
+        ┌──────────────────────────────────┐
+        │            ___                   │
+        │       ,---'   `---.              │
+        │  ()==[   ▄▄▄▄▄▄▄  ]==()          │   plain 3-D outside the circle
+        │       `-,,-'''''-.,-'            │
+        │      ┌ ─ ─ ─ ─ ─ ─ ┐             │
+        │    ╱  @#W$98 ;:+=-  ╲            │   ← inside: complementary-shaded
+        │   │  Ñ@#W$987654321  │  ● cursor │     glyphs on white cells,
+        │    ╲  #W$98765 ,._   ╱           │     luminance→density mapping
+        │      └ ─ ─ ─ ─ ─ ─ ┘             │
+        │         feathered edge           │
+        └──────────────────────────────────┘
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  4.  THE SCROLL TIMELINE — master diagram                                │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ONE normalised value drives everything:
+
+        pTarget = clamp01( scrollY / (scrollHeight − innerHeight) )   ⟨scroll⟩
+        p      += (pTarget − p) * (1 − exp(−dt * 7))                  ⟨fps⟩
+
+  ★ This double-buffering is the entire reason the page feels "buttery".
+    A mouse wheel delivers scroll in coarse 100px notches; pTarget jumps,
+    but p glides. Time-constant is 1/7 s ≈ 143 ms to 63%. Frame-rate
+    independent (uses exp(−dt·k), not a fixed lerp).
+
+  ┌─ p ────────────────────────────────────────────────────────────────────┐
+  │ 0.00      0.15      0.35        0.54       0.70      0.87        1.00  │
+  │  K0━━━━━━━━K1━━━━━━━━K2━━━━━━━━━━K3━━━━━━━━━K4━━━━━━━━K5━━━━━━━━━━K6    │
+  │  │         │         │           │          │         │          │     │
+  │ CH0       CH1       CH2         CH3        CH4      ─────── CH5 ─────  │
+  │ arrival  the name  the pack   telemetry  Nakuru      art × engineering │
+  │                                                                        │
+  │ BG: white   cream     ink       orange      blue      gold      gold   │
+  │     ░░░░    ▒▒▒▒      ████      ▓▓▓▓        ▒▒▒▒      ▓▓▓▓      ▓▓▓▓   │
+  │                                                                        │
+  │ side: 0    −0.28    −0.10      +0.28      −0.26     −0.12       0      │
+  │ car→        RIGHT    RIGHT      LEFT       RIGHT     RIGHT    CENTRE   │
+  │ text←       LEFT     LEFT       RIGHT      LEFT      LEFT       —      │
+  │                                                                        │
+  │ #heroTitle  ▓▓▒░ gone by p=0.20  (opacity = 1 − p*5)                   │
+  │ #scrollHint ▓▒░ gone by p=0.167  (opacity = 1 − p*6)                   │
+  │ #startWrap                                          fades in @ p>0.965 │
+  │ envGroup                                       0 ▁▂▃▅▇█ 1  (0.80→0.96) │
+  │ #railFill   ▁▁▂▂▃▃▄▄▅▅▅▆▆▆▇▇▇███  linear with p, label = round(p*100)% │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  Segment interpolation, ⟨fps⟩:
+
+        find i such that KEYS[i].at ≤ p < KEYS[i+1].at
+        t = smoothstep( (p − a.at) / (b.at − a.at) )      t² (3 − 2t)
+        camPos = lerp(a.camV, b.camV, t)
+        lookAt = lerp(a.lookV, b.lookV, t)
+        bg     = a.colC.lerp(b.colC, t)          ← scene background, not CSS
+        qCar   = (i===0) ? qFree.slerp(b.q, t)   ← blends OUT of the live spin
+                         : a.q.slerp(b.q, t)
+
+  ★ The i===0 branch is why the arrival spin doesn't snap. Whatever random
+    orientation the car happens to be in when you start scrolling, it SLERPs
+    from there into the fixed K1 pose. Every page-load has a different first
+    3 metres of animation. That is a feature.
+
+  ── 4a. THE "side" TRICK — how the car dodges the text ─────────────────────
+
+  `side` is a screen-space lateral aim offset expressed as a fraction of the
+  camera→target distance. It is applied AFTER the lookAt lerp:
+
+        dir   = normalize(lookAt − camPos);   dist = |lookAt − camPos|
+        right = normalize(dir × worldY)
+        lookAt += right * (side * dist)
+
+  Aiming the camera RIGHT pushes the subject to screen-LEFT, and vice-versa:
+
+     side = −0.28                        side = +0.28
+     ┌──────────────────────┐            ┌──────────────────────┐
+     │ 01 — THE NAME        │            │       03 — PROVEN IN │
+     │ KASI /ˈka·si/    ___ │            │ ___      DATA        │
+     │ South African,  [CAR]│            │[CAR]     Every lap   │
+     │ from lokasie…    ‾‾‾ │            │ ‾‾‾      is telemetry│
+     └──────────────────────┘            └──────────────────────┘
+       text LEFT, car RIGHT                car LEFT, text RIGHT
+       (.chapter[data-align=left])         (.chapter[data-align=right])
+
+  ★ On ≤720px, sideMul = 0 — the offset is disabled entirely and the camera
+    additionally pulls back 12% (camPos = lookAt + (camPos−lookAt)*1.12) with
+    FOV 54 instead of 38. Portrait would otherwise crop the car in half.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  5.  CAMERA ORBIT — plan view of all seven keyframes                     │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Top-down. Car at origin, nose pointing UP (+Z). ⊕ = camera, height in ( ).
+
+                              +Z (car nose)
+                                  ▲
+                                  │
+              K3 ⊕(y4.8)          │         K2 ⊕(y0.75)
+             (−7.2,−10.5)         │        (1.6, 7.6)  ← IN FRONT, LOW,
+                    ╲             │       ╱               looking UP at 1.35
+                     ╲        ┌───┴───┐  ╱
+                      ╲       │   ▲   │ ╱
+                       ╲      │ ┌───┐ │╱
+        −X ────────────────── │ │CAR│ │ ────────────── +X
+                              │ └───┘ │╲
+                              │       │ ╲
+                              └───┬───┘  ╲
+                          ╱       │       ╲  K4 ⊕(y3.0)
+                         ╱        │        ╲ (12.8, 0.5) ← pure broadside
+              K1 ⊕(y2.1)          │
+             (5.4, −5.8)          ▼
+                                 −Z
+                          K0 ⊕(0, 1.7, −6.8)   ← rear 3/4 low
+                          K5 ⊕(0, 8.8, −21)    ← rising, pulling back
+                          K6 ⊕(0, 14,  −30)    ← EXACT game chase-cam pose
+                                                  (CFG.camBack=30, camHeight=14)
+
+  ★ K6 is not a stylistic choice. camBack=30 / camHeight=14 are the game's
+    chase-cam constants. When you hit START ENGINE at p=1.0, the hero camera
+    and the game camera are in the SAME pose looking at the SAME framing. The
+    .8s white-stage dissolve is a match-cut, not a fade-to-black. If you retune
+    CFG.camBack or CFG.camHeight, K6 must move with them or the cut breaks.
+
+  Car orientation per keyframe (Euler, applied as a quaternion):
+
+    K0  (0, 0, 0)         live free-spin blends out of here
+    K1  (.05, −0.70, 0)   yawed 40° away — reads as three-quarter
+    K2  (0, +0.50, 0)     yawed 29° back, camera in front → hero front 3/4
+    K3  (.04, +1.05, 0)   yawed 60° — nearly broadside from high-left
+    K4  (0, +1.90, 0)     yawed 109° — full profile
+    K5  (0, +0.05, 0)     almost straight — settling
+    K6  (0, 0, 0)         dead straight, on the grid
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  6.  CHAPTER-BY-CHAPTER — what the viewer actually sees                   │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ── CH0  #ch0 · data-theme="white" · align center · min-height 100vh ───────
+
+  An EMPTY section. It has no .wrap, no children. Its entire job is to be one
+  viewport of scroll runway so the arrival frame (§3) can breathe and the
+  ASCII flashlight has room to live before its 25%-viewport sleep gate.
+
+
+  ── CH1  #ch1 · "cream" · align LEFT · 100vh · p ≈ 0.03 → 0.20 ─────────────
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ◉◉◉◉◉                                                        ⬭ SOUND   │
+  │                                                                        │
+  │  ──── 0 1   —   T H E   N A M E                                        │
+  │  ↑ .eyebrow: mono 12px, 5px tracking, ::before is a 34px hairline rule  │
+  │                                                                        │
+  │  ██╗  ██╗ █████╗ ███████╗██╗                                      ▮    │
+  │  ██║ ██╔╝██╔══██╗██╔════╝██║   /ˈka·si/                ___        ▮    │
+  │  █████╔╝ ███████║███████╗██║   ↑ .ipa, mono       ,---'   `--.    ▮    │
+  │  ██╔═██╗ ██╔══██║╚════██║██║                     [  ▄▄▄KASI▄▄  ]  ▮    │
+  │  ██║  ██╗██║  ██║███████║██║                      `--.______.--'  ▮    │
+  │  ↑ .h-giant — clamp(52px, 11vw, 150px), 900wt, line-height .86         │
+  │                                                    ↑ car pushed RIGHT  │
+  │  South African, from lokasie — the location,        by side = −0.28    │
+  │  the township, the neighbourhood. The place                            │
+  │  that makes you. We build batteries the way                            │
+  │  the kasi builds drivers: with everything we                           │
+  │  have, and nothing wasted.                                             │
+  │  ↑ .lede — 46ch max, --fg-soft (62% alpha), <b> pops to full --fg      │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  THE REVEAL MECHANIC — two stacked systems, both delay-staggered by --i:
+
+    (A) .rv  — the block itself
+        from: opacity 0, translateY(38px)
+        to:   opacity 1, translateY(0)
+        .8s cubic-bezier(.2,.75,.2,1)      delay: --i * 90ms
+
+    (B) .mask > span — per-line typographic wipe, nested INSIDE the .rv
+        .mask is overflow:hidden with padding .08em .14em and a cancelling
+        margin 0 −.14em  ★ (without that padding the display font's edge
+        glyphs get clipped by the overflow box — a real bug that was fixed)
+        span from: translateY(120%)   to: translateY(0)
+        .9s cubic-bezier(.16,.84,.3,1)     delay: --i * 90ms
+
+    Combined per line:
+
+        t=0ms    ┌──────────────┐   mask box is there, span is 120% below
+                 │              │
+                 └──────────────┘
+        t=250ms  ┌──────────────┐   span rising, block also fading up 38px
+                 │   ▄▄▄▄▄      │
+                 └──────────────┘
+        t=900ms  ┌──────────────┐   settled
+                 │ KASI         │
+                 └──────────────┘
+
+    Trigger: a single IntersectionObserver, threshold 0.25, rootMargin
+    '0px 0px -8% 0px'. One-shot — unobserve() on entry. ★ Scrolling back up
+    does NOT replay. Deliberate: replaying on a scroll-linked page reads as
+    a glitch.
+
+
+  ── TICKER  (between CH1/CH2 and CH3/CH4) ──────────────────────────────────
+
+  A hairline-bounded band, pointer-events:none, that slides forever:
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ──────────────────────────────────────────────────────────────────────  │
+  │  CELL TO CASING ◆  DESIGNED ON THE CONTINENT IT POWERS ◆  NAIROBI ◆ ─►  │
+  │ ──────────────────────────────────────────────────────────────────────  │
+  └────────────────────────────────────────────────────────────────────────┘
+
+    @keyframes marquee { to { transform: translateX(-50%) } }
+    26s linear infinite, will-change:transform
+
+  ★ The content list is duplicated EXACTLY TWICE in the HTML. translateX(-50%)
+    therefore lands the second copy precisely where the first started —
+    a seamless loop. If you add or remove one <span>, you must add or remove
+    its twin or the loop will visibly jump every 26 seconds.
+    ◆ separator is a ::after in --orange.
+
+
+  ── CH2  #ch2 · "ink" · align LEFT · TALL (132vh) · p ≈ 0.25 → 0.45 ────────
+
+  The background goes DARK. The 3-D scene lerps to the scheme's `ink` stop and
+  setThemeFg() flips all DOM text to the light `paper` colour. Camera swings
+  in FRONT of the car (K2: z = +7.6) at bumper height (y = 0.75) looking UP.
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ██████████████████████████████████████████████████████████████████████ │
+  │ ██  ──── 0 2   —   T H E   P A C K                                  ██ │
+  │ ██                                                                  ██ │
+  │ ██  CHEMISTRY,                              ╱▔▔▔╲                   ██ │
+  │ ██  CONTINENTAL.  ← .accent = --orange       │ ● │  ← NOSE-ON, low, ██ │
+  │ ██                                          ╱─┴─╲    looking up     ██ │
+  │ ██  A prismatic pack engineered cell-up  ══╡ KASI ╞══                ██ │
+  │ ██  for African heat, dust and distance     ╲___╱                   ██ │
+  │ ██  — not adapted from somewhere colder.                            ██ │
+  │ ██                                                                  ██ │
+  │ ██  ───────────────────  ───────────────────                        ██ │
+  │ ██  412 Wh/kg            6,000                ← counters animate    ██ │
+  │ ██  ENERGY DENSITY       CHARGE CYCLES                              ██ │
+  │ ██                                                                  ██ │
+  │ ██  ───────────────────  ───────────────────                        ██ │
+  │ ██  94 %                 55 °C peak                                 ██ │
+  │ ██  RECYCLABLE BY MASS   OPERATING ENVELOPE                         ██ │
+  │ ██████████████████████████████████████████████████████████████████████ │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  COUNTER ANIMATION — fires from the SAME IntersectionObserver callback that
+  adds .in, so the number roll and the text reveal start on the same frame:
+
+        dur = 1250ms,  ease = 1 − (1−k)³   (easeOutCubic)
+        val = round(target * ease)
+        data-sep="1"  →  toLocaleString('en-US')  →  "6,000"
+
+        0 ▁▂▃▄▅▆▇█ 412        fast out of the gate, long soft landing
+        │←── ~400ms ──→│←──────── ~850ms ────────→│
+        │   0 → 300    │       300 → 412           │
+
+  ★ HISTORICAL NOTE, and the reason this chapter says "Watch it come apart":
+    a fully-built procedural battery pack (ink tray + 3×4 prismatic cell grid
+    in orange/yellow + cream busbar plate + two deep-orange terminal caps)
+    still exists in the Hero module, complete with per-part explode vectors
+    and a `packT` fan-out driver. It is DISABLED:
+
+        pack.visible = false;
+        car.remove(pack);                     // never added back
+        function applyPack(t){ /* removed */ }
+
+    KEYS[2].pack is still 1, so the timeline still drives a value into a
+    no-op. The copy "Watch it come apart" is now writing a cheque the visuals
+    don't cash. Either re-enable applyPack or rewrite the lede. ★★
+
+
+  ── CH3  #ch3 · "orange" · align RIGHT · TALL · p ≈ 0.48 → 0.60 ────────────
+
+  First and only right-aligned chapter. side flips to +0.28, so the car snaps
+  across to screen-LEFT while the text lands on the right. Camera is up at
+  y=4.8 and out at x=−7.2, z=−10.5 — a high rear-quarter.
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+  │ ▓▓                             0 3   —   P R O V E N   I N   D A T A ▓▓ │
+  │ ▓▓        ╱▔▔▔▔▔▔╲                                                  ▓▓ │
+  │ ▓▓    ○══╡  KASI  ╞══○                              EVERY LAP       ▓▓ │
+  │ ▓▓        ╲______╱                            IS TELEMETRY.         ▓▓ │
+  │ ▓▓         high rear-quarter                                        ▓▓ │
+  │ ▓▓                          Draw, regen and efficiency, logged in   ▓▓ │
+  │ ▓▓                          real kilometres. The same numbers       ▓▓ │
+  │ ▓▓                          you're about to race with — we don't    ▓▓ │
+  │ ▓▓                          model performance, we measure it.       ▓▓ │
+  │ ▓▓                                                                  ▓▓ │
+  │ ▓▓                          ──────────────  ──────────────          ▓▓ │
+  │ ▓▓                          138 Wh/km       31 % regen              ▓▓ │
+  │ ▓▓                          AVG RACE DRAW   RECOVERED UNDER BRAKING ▓▓ │
+  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  ★ On an orange background the .accent rule inverts:
+      body[data-theme="orange"] .accent { color: var(--ink); }
+    Orange-on-orange would vanish. Any new theme with a saturated bg needs
+    the same escape hatch.
+
+  ★ .chapter[data-align="right"] .lede { margin-left: auto } — without it the
+    max-width:46ch paragraph stays glued to the left edge of .wrap and the
+    right-alignment reads as broken.
+
+
+  ── CH4  #ch4 · "blue" · align LEFT · TALL · p ≈ 0.63 → 0.78 ───────────────
+
+  Camera at K4: (12.8, 3.0, 0.5) — pure broadside, dead level with the car's
+  flank. Car yawed 1.9 rad (109°). This is the SIDEPOD DECAL SHOT: the KASI
+  logo planes sit at x = ±halfWidth*0.64, rotated ±90° to face outward. This
+  frame exists so you read the branding on the car.
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ │
+  │ ▒▒  ──── 0 4   —   T H E   P R O V I N G   G R O U N D              ▒▒ │
+  │ ▒▒                                                                  ▒▒ │
+  │ ▒▒  LANGA LANGA,                                                    ▒▒ │
+  │ ▒▒  NAKURU.                    ┌────────────────────────┐           ▒▒ │
+  │ ▒▒                            ╱ ▁▁▁▁▁  ┌─┐              ╲           ▒▒ │
+  │ ▒▒  2.1 lakeside kilometres, ╱ ╱ K A S I │ ▔▔▔▔▔▔▔▔▔▔▔▔  ╲          ▒▒ │
+  │ ▒▒  raced from 1956 to 1988.  ●─────────●───────────────●           ▒▒ │
+  │ ▒▒  Flamingos on the water,      ↑ sidepod decal, full profile      ▒▒ │
+  │ ▒▒  dust on the exit kerbs. We                                      ▒▒ │
+  │ ▒▒  test where motorsport in Africa began — and we brought the      ▒▒ │
+  │ ▒▒  circuit with us.                                                ▒▒ │
+  │ ▒▒                                                                  ▒▒ │
+  │ ▒▒  Scroll on. The car is finding its grid slot.                     ▒▒ │
+  │ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ │
+  └────────────────────────────────────────────────────────────────────────┘
+
+
+  ── CH5  #ch5 · "white" · .final · 180vh · align-items:flex-end ────────────
+  ──     p ≈ 0.80 → 1.00 — THE LANDING SEQUENCE                             ─
+
+  The longest section in the document (180vh, padding-bottom 22vh) because
+  three things have to resolve inside it, in order:
+
+    (1) p 0.80 → 0.96 : THE WORLD WARMS IN
+        revealEnv(t) with t = clamp01((p − 0.80) / 0.16)
+
+          envGroup.visible = t > 0.003
+          hGround.material.opacity = t              400×400 sand plane, y=−0.02
+          each start-line block.opacity = t * 0.9   12 blocks, 0.9×0.9,
+                                                    alternating ink/white,
+                                                    laid across z=+6 (AHEAD)
+
+        The white void becomes a sand ground with a chequered start line in
+        front of the car. The car stops floating and starts being PARKED.
+
+    (2) p → 1.00 : the camera arrives at the game chase-cam pose K6
+
+    (3) p > 0.965 : #startWrap.on → opacity 0→1 over .35s, pointer-events:auto
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ ◉◉◉◉◉                                                        ⬭ SOUND   │
+  │  ──── 0 5   —   A R T   ×   E N G I N E E R I N G                      │
+  │                                                                        │
+  │  HALF STUDIO.                                                     ▮    │
+  │  HALF LAB.   ← .accent, --orange                                  ▮    │
+  │                                                                   ▮    │
+  │  KASI is where the draughtsman and the electrochemist share        ▮    │
+  │  a bench. You've read the spec — now feel it.                     ▮    │
+  │  Full charge. Prove it on the circuit.                            ▮ 98%│
+  │                              ╱▔▔▔╲                                     │
+  │                             ╱ KASI╲       ← car dead centre,           │
+  │                        ●══╡       ╞══●      side = 0, straight,        │
+  │                            ╲_____╱          seen from (0,14,−30)       │
+  │                    ░░░░░░░░░░░░░░░░░░░░                                │
+  │              ▓▓░░▓▓░░▓▓░░▓▓░░▓▓░░▓▓░░▓▓  ← start line fading in        │
+  │              ░░░░░░ sand ground ░░░░░░░░     (12 blocks, z = +6)       │
+  │                                                                        │
+  │                  SESSION BEST — 01:24.309   ← #bestLine, only after    │
+  │                 ┌───────────────────────┐      a previous run          │
+  │                 │   S T A R T  E N G I N E │  ← #startWrap, bottom:12vh│
+  │                 └───────────────────────┘     hover → bg --orange      │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  ★ #startWrap is anchored bottom:12vh / left:50% so the button sits DIRECTLY
+    BENEATH the car in the K6 framing. It is inside #landing, not #story —
+    which is why it survives body.playing's display:none purge of #story and
+    why it is positioned relative to the fixed viewport, not the scroll flow.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  7.  PERSISTENT CHROME                                                   │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ── 7a. #chargeRail — scroll position rendered as state-of-charge ──────────
+
+  Desktop: fixed right:26px, vertically centred, 6px wide, height min(46vh,380px)
+
+        ┌─┐  ← #railPct, writing-mode: vertical-rl + rotate(180deg)
+        │6│    so the digits read bottom-to-top
+        │4│
+        │%│
+        ├─┤
+        │▮│ ●  ← #railTicks button, one per .chapter, positioned at
+        │▮│       top = sec.offsetTop / scrollMax * 100%
+        │▮│ ●     6px dot, α.35 → hover α1 + scale(1.5)
+        │▮│       click → scrollTo({top, behavior:'smooth'})
+        │▮│ ●
+        │▓│    ← #railFill, height = var(--charge), a linear-gradient
+        │▓│ ●     to top: --green → --yellow 55% → --orange
+        │▓│
+        │▓│ ●
+        └─┘
+       CHARGE  ← #railLabel, also vertical-rl
+
+  ★ The gradient runs green(bottom) → orange(top), i.e. the rail gets HOTTER
+    as you approach the race. Note this is the OPPOSITE semantic of the
+    in-race #battFill, which goes green → yellow → orange as charge DROPS.
+    Same visual language, inverted meaning. Intentional, but confusing if you
+    are reading the two side by side.
+
+  ★ Mobile ≤720px: the rail rotates to a horizontal bar pinned to the bottom
+    (bottom:16px, left/right:16px, flex-direction:row-reverse), the fill
+    gradient rotates to `to right`, and #railTicks + #railLabel are hidden.
+
+  ── 7b. #palettePicker — 5 bird colour schemes ─────────────────────────────
+
+  Top-left, five 20px circles. Each swatch's background is that scheme's
+  `orange` token (the most identifying colour). Selected gets a 2px --fg
+  border + scale(1.15). Hover: scale(1.15).
+
+     ◉      ◉      ◉      ◉      ◉
+   Savanna Jewel Turquoise Lilac Roller
+   #B168C4 #33B4D1 #2AA9C9 #C05CC4 #7A3FD0
+
+  Clicking rewrites CSS custom property VALUES on :root — the NAMES never
+  change, so every var(--token) in the sheet recolours in one assignment:
+
+        for (t of [cream, ink, orange, yellow, blue, green, sand, paper])
+            root.style.setProperty('--' + t, S[t])
+        Hero.setStops(S.stops)           ← recolours the 3-D scroll backdrops
+        setThemeFg(body.dataset.theme)   ← re-derives text colour
+        localStorage.setItem('kasiScheme', i)
+
+  AUTOMATIC TEXT CONTRAST — the reason a dark scheme (Jewel) stays legible:
+
+        bg    = SCHEMES[cur].stops[activeThemeName]
+        L     = 0.2126R + 0.7152G + 0.0722B   (naive sRGB luma, not linearised)
+        fg    = (L < 0.5) ? scheme.paper : scheme.ink
+        --fg      = fg
+        --fg-soft = rgba(fg, .62)
+        --hair    = rgba(fg, .20)
+
+  ★ There is no CSS transition on --fg itself; the smoothness comes from
+    .chapter { transition: color .5s ease } inheriting the new value. Elements
+    that use --fg for BORDER colour (.kstat border-top via --hair) therefore
+    snap instantly while the text crossfades. Minor, visible if you look.
+
+  ── 7c. Section theming — the 4% trigger band ──────────────────────────────
+
+        rootMargin: '-48% 0px -48% 0px', threshold: 0
+
+  This shrinks the observer's root to a 4%-of-viewport-tall horizontal strip
+  through the middle of the screen. A section's theme applies the instant ANY
+  part of it crosses that strip.
+
+                ┌─────────────────────┐
+                │                     │  ← ignored (−48%)
+                │                     │
+                ├ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┤  ▲
+                │  TRIGGER BAND  4%   │  │ whatever is here owns body[data-theme]
+                ├ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┤  ▼
+                │                     │
+                │                     │  ← ignored (−48%)
+                └─────────────────────┘
+
+  ★ The .ticker divs also carry data-theme and are observed. Without that,
+    scrolling through a ticker would leave the previous chapter's theme
+    applied and the ticker's own hairline borders would be wrong.
+
+  ── 7d. #soundToggle — synthesised track ambience ──────────────────────────
+
+        ⬭ SOUND      dot = --fg-soft, border = --hair
+        ◉ SOUND      .on → dot = --orange + 8px orange glow
+
+  There is no audio file. Clicking builds a WebAudio graph on the fly:
+
+        [osc 46Hz saw ]┐
+        [osc 69Hz saw ]┼─► rumble gain ─► lowpass 320Hz Q.6 ─┐
+        [osc 92Hz sine]┘        ▲                            │
+                                │                            ├─► master ─►out
+        [LFO 0.09Hz] ──► ×0.35 ─┘  slow swell = cars passing  │   gain
+        [LFO 0.05Hz] ──► ×8 ──► osc[2].frequency (pitch drift)│   ramp to
+                                                              │   0.055 over
+        [4s noise buffer, loop] ─► bandpass 520Hz Q.8 ─► ×0.18┘   1.6s
+
+    Two independent LFOs at 0.09Hz and 0.05Hz means the beat pattern repeats
+    every ~1/gcd ≈ 100s — long enough that the loop never audibly cycles.
+    Stop: master ramps to 0 over 0.4s, then all nodes .stop() after 900ms so
+    repeated toggling can never stack voices.
+
+  ★ #startBtn also calls ambStop() — the ambience ducks out the moment the
+    race ignites so it doesn't fight the engine synth.
+
+  ── 7e. #grain ────────────────────────────────────────────────────────────
+
+  A 140×140 inline-SVG feTurbulence(fractalNoise, baseFreq .9, 2 octaves,
+  stitchTiles) tiled over the whole viewport at opacity .045 with
+  mix-blend-mode:multiply. Static — it does not animate. It is the single
+  cheapest thing making the flat-shaded 3-D read as print.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  8.  THE IGNITION — START ENGINE                                         │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Click #startBtn → startCountdown(). Everything below happens in ONE frame
+  except the .8s dissolve:
+
+    reset()                          car to Track.pts[startIdx], heading from
+                                     the tangent, all telemetry zeroed, AI
+                                     placed on the staggered grid, camera
+                                     TELEPORTED to the chase pose (no lerp)
+    AudioEngine.init()               first user gesture — creates AudioContext
+    G.state = 'countdown'
+    Hero.fadeOut()                   active=false → hero rAF short-circuits
+                                     heroPhaseActive=false → GAME LOOP WAKES
+                                     body.hero-phase removed → .tilt + #hud
+                                       become visible
+                                     #landing.fade → opacity 0 over .8s
+                                       → on transitionend, .gone (display:none)
+    body.classList.add('playing')    #story, #chargeRail, #soundToggle,
+                                     #heroTitle, #grain, #palettePicker all
+                                     display:none — the entire brand layer
+                                     vanishes at once
+                                     overflow:hidden — scroll locked
+    #countdown.display = 'flex'
+    #hud.display       = 'block'
+
+  ★ THE CRITICAL ORDERING DETAIL: the main game loop's very first statement is
+
+        if (heroPhaseActive) return;
+
+    The game scene has NEVER been rendered before this moment. Hero.fadeOut()
+    clears the flag, and on the NEXT frame the game renders for the first
+    time — already in the correct camera pose because reset() teleported it.
+    The .8s fade then dissolves the white hero stage off a full race scene.
+
+               BEFORE (t=0)                    AFTER (t=800ms)
+        ┌──────────────────────┐       ┌──────────────────────┐
+        │  white void          │       │ ▒▒ sky/fog ▒▒▒▒▒▒▒▒▒ │
+        │      ╱▔▔▔╲           │  ~~►  │ ░░░ dunes ░░ palms ░ │
+        │  ●══╡KASI╞══●        │       │ ███ tarmac ███ ▮ ▮ ▮ │
+        │   ░░░░░░░░░          │       │  ●══╡KASI╞══●  crowd │
+        │   ▓░▓░▓░▓░▓          │       │ ███ ▬▬▬▬▬▬▬▬ ███     │
+        └──────────────────────┘       └──────────────────────┘
+         hero scene, 12 blocks           game scene, 820-sample
+         of start line                   Nakuru circuit + 7 AI cars
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  9.  COUNTDOWN — 3 · 2 · 1 · GO!                                         │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  NAKURU · LANGA LANGA         00:00.000                     1/8 POSITION│
+  │  LAP 1/1                                                          ▮▮   │
+  │                                                            ▬▬▬▬ 100%   │
+  │  ┌────────────┐                                    0.00 KWH · REGEN 0.00│
+  │  │  ╭──╮      │                                                        │
+  │  │  │  ╰─╮    │              ███████                                   │
+  │  │  ╰╮   │    │            ███     ███   ← #countNum                   │
+  │  │   ╰───╯ ⚑  │               ███         clamp(90px, 18vw, 200px)     │
+  │  └────────────┘             ███           text-shadow: 6px 6px 0       │
+  │   ↑ #minimap                ███████        var(--yellow)               │
+  │                                                                        │
+  │                                                                        │
+  │  DRIFT                                                            0    │
+  │                     ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬                       KM/H   │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  Timing, driven off performance.now() − G.countStart:
+
+        e < 3s   n = ceil(3 − e)      "3" → "2" → "1"
+                 on each change: AudioEngine.blip(560Hz, 0.10s, vol .12)
+                                 square wave, exponential decay to 0.001
+        e ≥ 3s   text = "GO!"
+                 blip(920Hz, 0.25s, vol .15)   — higher, longer, louder
+                 G.state = 'race'   ← timer starts, input is live IMMEDIATELY
+
+        t: 0.0───────1.0───────2.0───────3.0──────────────3.8
+           │ "3"     │ "2"     │ "1"     │ "GO!"           │
+           ♪560      ♪560      ♪560      ♪920 ────────────► #countdown
+                                          ▲                  display:none
+                                    race starts here
+
+  ★ "GO!" stays on screen for 800ms AFTER the race has begun. You are already
+    driving while it is up. #countdown is pointer-events:none and background
+    transparent, so it never blocks anything.
+
+  ★ There is no start-lights rig in 3-D. The countdown is pure DOM.
+
+  ★ Physics runs during 'countdown' too — Car.step(dt, noCtl) — with a
+    null control object. So the car settles/does nothing, but the pipeline
+    (nearest-index tracking, crowd update, particles) is already warm.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 10.  THE RACE — full HUD anatomy                                         │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ NAKURU · LANGA LANGA        00:47.221                    3/8 POSITION ⏸│
+  │ ↑ top:26 left:34            ↑ top:22, centred            ↑top:30       ││
+  │   12px, 5px track,            30px tabular-nums            right:82   ▲│
+  │   α.65                                                     20px       ││
+  │ LAP 1/1  ← top:48 left:34                          ▬▬▬▬▬▬▬▬▬░░ 68%    ││
+  │                                                    ↑ #battBar 90×6px  ││
+  │ ┌──────────────┐                              1.04 KWH · REGEN 0.21   ││
+  │ │   ╭────╮     │                              ↑ #battKwh 10px         ││
+  │ │  ╱      ╲    │  ← #minimap 150×150 canvas                           ││
+  │ │ │   ● ●  │   │    top:96 left:34, α.92                              ││
+  │ │  ╲  ●   ╱    │    cream rounded rect α.55                           ││
+  │ │   ╲___╱   ⚑  │    ink path, lineWidth 3, round joins                ││
+  │ │      ● ●     │    ● ink dots = 7 AI cars (r3)                       ││
+  │ │       ◉      │    ◉ orange dot = player (r5, cream 2px stroke)      ││
+  │ └──────────────┘    ⚑ 3×2 chequer + pole at startIdx                  ││
+  │                                                                       ││
+  │                        ░░░ dust puffs ░░░                             ││
+  │                    ╱▔▔▔▔╲   ← the car, ~30 units ahead of camera      ││
+  │              ●════╡ KASI ╞════●                                       ││
+  │                    ╲____╱                                             ││
+  │                                                                       ││
+  │ D R I F T   ← bottom:118 left:38, --orange, opacity 0↔1 in .12s       ││
+  │ 1,284 PTS   ← bottom:96 left:38, α.7                        4 1 7    ▼│
+  │             ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬░░░░░░░░░                  K M / H   │
+  │             ↑ #progWrap min(420px,46vw)×8px, bottom:34       ↑ 52px   │
+  │               #progFill --orange, transition width .15s linear         │
+  └────────────────────────────────────────────────────────────────────────┘
+   ▒▒▒▒ .tilt.top and .tilt.bot: 22%-tall backdrop-filter:blur(2.5px) bands,
+        masked with a linear-gradient so the blur FADES toward the centre.
+        Fake tilt-shift. z:5 — under the HUD, over the 3-D. ▒▒▒▒
+
+  ── 10a. HUD update rules (all inside `if (racing)`) ───────────────────────
+
+    #timer      fmt(G.raceTime)  →  MM:SS.mmm, zero-padded, tabular-nums
+    #speedVal   round(speed * 3.6)                              km/h
+    #driftTag   opacity = Car.S.drifting ? 1 : 0     .12s transition
+    #driftScore only rendered once score > 1: "N PTS"
+                G.driftScore += |latSpeed| * dt * 10
+    #progFill   width = clamp(G.prog / (N*LAPS), 0, 1) * 100 %
+    #posTag     1 + count(AI cars with c.prog > G.prog), out of 8
+                ★ only written when the value CHANGES (avoids layout thrash)
+    #lapVal     clamp(floor(G.prog / N) + 1, 1, LAPS)  — LAPS is 1, so this
+                is always "1/1". Vestigial but wired correctly for LAPS > 1.
+
+  ── 10b. Battery telemetry — the brand made mechanical ─────────────────────
+
+        kW      = 1.2 + throttle * (30 + speed * 0.8)
+        regenKW = (no throttle && braking && fwdSpeed > 3) ? 18 : 0
+        energy += kW * dt / 3600                             (kWh)
+        regen  += regenKW * dt / 3600
+        batt    = clamp(batt − (kW − regenKW) * dt / 3600 / 3.0 * 100, 0, 100)
+
+    #battFill colour thresholds:
+
+        batt > 50   ▬▬▬▬▬▬▬▬  #6FBF73  green
+        batt > 20   ▬▬▬▬░░░░  #F2C43D  yellow
+        else        ▬░░░░░░░  #E8542F  orange
+
+  ★ Battery NEVER limits performance. At 0% the car drives identically. This
+    is a telemetry display, not a resource mechanic. Read the code before
+    "fixing" it — the readout is the brand story, not the game loop.
+
+  ★ regen requires Input.down directly (not the abstract control object), so
+    the AUTOPILOT during the finish cinematic can never earn regen. Harmless
+    today because telemetry is frozen after finish(), but it's a latent
+    coupling if you ever let the autopilot accumulate stats.
+
+  ── 10c. THE DRIFT MODEL — what the player feels ───────────────────────────
+
+  Velocity is a free 2-D vector; heading is a SEPARATE scalar. Tyres pull
+  lateral slip toward zero, but the force is CLAMPED at a grip limit. Exceed
+  it and the rear steps out.
+
+        latAcc = clamp(−latSpeed * latStiff, −grip, +grip)
+                                    (11)
+
+        grip =  100   normal tarmac        ← huge; car is glued
+                 30   two wheels on sand
+                 16   handbrake (Space)    ← 6× less than tarmac
+
+                      GRIP-LIMITED                 SLIP-LIMITED
+                      (normal cornering)           (DRIFT)
+         lateral   ▲                            ▲
+         restoring │      ╱                     │    ┌──────── clamp at ±grip
+         force     │    ╱                       │   ╱
+                   │  ╱  slope = latStiff       │  ╱
+                   │╱                           │╱
+                   └────────────► latSpeed      └────────────► latSpeed
+                                                    ↑ beyond here the tyre
+                                                      cannot hold the car
+
+    DRIFT FLAG:   |latSpeed| > 7 && speed > 10       (lateral slide)
+               ||  handbrake && speed > 8            (deliberate)
+
+    Two feedback loops make it controllable rather than random:
+
+      (1) driftBoost — once |latSpeed| > 7, steering authority × 1.35.
+          You get MORE counter-steer exactly when you need it.
+      (2) self-align — above 4 m/s, the heading is pulled toward the actual
+          velocity vector, scaled by grip/100:
+
+              omega += slip * 0.9 * dt * (grip / CFG.grip)
+
+          On tarmac (grip 100) that's a strong snap-back: the car straightens
+          itself out of a slide. On the handbrake (grip 16) it's 6× weaker —
+          the slide HOLDS. That single scale factor is the entire feel of the
+          handbrake. ★
+
+    Steering authority also scales with speed, then decays at high speed:
+
+        speedFac = clamp(|fwdSpeed| / 12, 0, 1) / (1 + |fwdSpeed| * 0.010)
+
+              1.0 ┤        ╭─╮
+                  │       ╱   ╰──╮
+              0.5 ┤      ╱        ╰────╮____
+                  │     ╱                   ╰────
+              0.0 ┼────╯
+                  0    12       50        100  m/s
+                  ↑ no steering  ↑ peak    ↑ high-speed stability
+
+  ★ SIGN CONVENTION LANDMINE: steer = (left ? 1 : 0) − (right ? 1 : 0).
+    Pressing LEFT INCREASES heading. Behind the chase cam that turns the car
+    screen-left, which is correct. But it is inverted from the usual
+    "right-hand rule" reading, and the autopilot code carries an explicit
+    comment about it. Do not "fix" this sign without also flipping autopilot().
+
+  ── 10d. DUST & SMOKE ─────────────────────────────────────────────────────
+
+  A 140-item pool of 0.7-unit cubes, ring-buffer allocated (never GC'd).
+
+    Emission triggers (any of):
+        drifting                              → 3 puffs/frame
+        launching  (throttle && speed < 14)   → 2 puffs/frame
+        rough      (onSand && speed > 9)      → 2 puffs/frame
+
+    Colour:  onSand ? #E8D3A8 (sand plume) : #D8D2C6 (pale tyre smoke)
+    Spawned alternately at the LEFT and RIGHT rear wheel positions.
+
+    Per-particle life:
+        life  = 0.55 → 1.05 s
+        vel   = (±1.5, +2.2…4.2, ±1.5)   then × (1 − dt*1.5) drag per frame
+        scale = (1 + (1−t)*2.4) * 0.7    grows to ~2.4× as it dies
+        α     = t * 0.55                 fades linearly with remaining life
+        rot.y += dt * 2                  slow tumble
+
+              t=1.0        t=0.6          t=0.2
+               ▪            ▫              ░░
+              (small,     (bigger,        (large,
+               opaque)     fading)         nearly gone)
+
+  ── 10e. CHASE CAMERA ─────────────────────────────────────────────────────
+
+        zoom  = 1 + min(1, speed/80) * 0.30        ← pulls BACK when fast
+        target = carPos − fwd * 30 * zoom,  y = 14 * zoom
+        a      = 1 − 0.001 ^ (dt * 3.2 / 3)        ← frame-rate-independent
+        camera.position.lerp(target, a)
+
+        lookTarget.lerp(carPos + fwd*8  at y=2,  a * 1.6)
+        camera.lookAt(lookTarget)
+
+    Two separate lags, and the aim lag is 1.6× FASTER than the position lag.
+    That difference is what produces the "the camera is chasing you" feel:
+    the body of the shot trails, the aim catches up.
+
+    The aim point is 8 units AHEAD of the car, not at the car. You are always
+    looking slightly into the corner you're entering.
+
+                   camera                     car        look point
+                     ⊕ ─────── 30·zoom ───────► ▮ ──8──► ✛
+                   y=14·zoom                   y=0       y=2
+                     │                          │
+                     └── lerps at a ────────────┴── lerps at a*1.6
+
+  ★ At 80 km/h+ the camera is 39 units back and 18.2 up. The perceived speed
+    increase comes from the widening frame, not from any FOV change — FOV is
+    a fixed 38°.
+
+  ── 10f. THE WORLD — one lap of Langa Langa ───────────────────────────────
+
+  Plan view of the recreated circuit (Nakuru Park Circuit, 1956–1988).
+  16 waypoints → CatmullRom (closed, tension 0.35) → 820 evenly-spaced samples.
+
+                              N (+Z)
+                    ╭──────────────────╮
+              ╭────╯   northern         ╰───╮
+         ╭───╯          sweepers             ╰──╮
+        ╱                                       ╲
+    ╭──╯  esses                                  │  ← MAIN STRAIGHT
+    │  ╲                                         │    (lakeside, east)
+    │   ╰──╮                                     │
+    │      │                        ~~~~~~~~~~~  │  ← LAKE NAKURU
+   W│  west│                       ~~~~~~~~~~~~  │    circle r90,
+  (−X)  kink                       ~ 70 FLAMINGOS│    scaled 1.3 × 1.8
+    │      │                        ~~~~~~~~~~~  │    160 units off-track
+    │   ╭──╯                                     │
+    ╰──╮                                         │
+        ╲    southern hairpin                   ╱
+         ╰──╮        & return              ╭───╯
+             ╰───────────╤═══════════─────╯
+                         ⚑ START/FINISH (startIdx = 0)
+                              S (−Z)
+
+  Cross-section of the road surface, from the centreline outward:
+
+        │←──────────── 32.6 units gravel shoulder ────────────→│  y=0.02
+        │   │←──────────── 28 units asphalt ────────────→│     │  y=0.05
+        │   │ ┃                    ┋                  ┃ │     │
+        ▮   │ ┃  ← white edge line │ centre dashes    ┃ │     ▮  y=0.07
+        │   │ ┃    0.7 wide        │ 1.0×4.6 yellow   ┃ │     │
+        ↑                          │ every 6th sample         ↑
+     delineator post            centreline               delineator post
+     at ±15.9, 1.1 tall                                  (every 10 samples,
+     white with a red tip                                 both sides)
+
+    Curbs: red/white
+    alternating blocks appear on the OUTSIDE of any
+    sample where |curvature| > 0.30, stepping every 2 samples so red and
+    white alternate down the kerb.
+
+    Start/finish gate at startIdx:
+                     ╔═══════════════════════╗  ← banner, y=5.2, --orange
+                     ║                       ║
+                    ┃│                       │┃  ← 5-unit ink posts at
+                    ┃│                       │┃    ±(roadHalf+1.2)
+                    ┃│  ▓░▓░▓░▓  ▓░▓░▓░▓     │┃  ← 2 rows of ink blocks on
+                    ┃│  ─────────────────    │┃    a white 2.4-wide strip
+                    ┃└───────────────────────┘┃
+
+    Scenery, all InstancedMesh, all seeded-random (seed 20260706 — the layout
+    is IDENTICAL on every load):
+
+        26 dunes        squashed spheres, 40–110 wide, 70–210 units off-track
+        palms           instanced trunk + a 7-frond merged crown, leaning
+                        ±0.22 rad, 12 clustered around the lake shore
+        acacias         trunk + a flat pancake canopy (the Sahel silhouette)
+        rocks           dodecahedra, y-squashed 0.75
+        huts            adobe cube + roof slab
+        3 camps         Kenney CC0 tents.glb from jsDelivr, with procedural
+                        pyramid tents standing in until (and if) it loads ★
+        70 flamingos    box-built, wading in the lake shallows
+        sun disc        r46 at (320,130,560), billboarded every frame,
+                        fog:false so it never washes out
+
+    CROWD BEHAVIOUR — the world reacting to you:
+
+        Up to 9 apexes chosen by |curvature|, min 55 samples apart.
+        5–8 spectators each, on the OUTSIDE of the bend, 3.2–6.7 units back.
+        Each has a random phase offset.
+
+        idle   (dist > 26):  hop = sin(t*2 + phase) * 0.06 + 0.06   ← a sway
+        cheer  (dist ≤ 26):  hop = |sin(t*9 + phase)| * 1.1         ← JUMPING
+
+                idle                    cheering
+                 ○                    ○   ○
+                 ▯   ○   ○           ▯     ○  ▯
+                 ▯   ▯   ▯               ▯    ▯   ○
+              ───────────────       ─────────────▯──
+                                    ↑ 4.5× the frequency, 18× the amplitude
+
+  ── 10g. THE AI FIELD ─────────────────────────────────────────────────────
+
+  7 kinematic spline-followers. NOT physics-driven — each car is a float
+  position `s` in track-index units, plus a fixed lane offset.
+
+        pose:  P = lerp(pts[i0], pts[i1], f) + norms[i0] * lane
+               heading = atan2(lerp(tans[i0], tans[i1], f))
+
+        target speed = topSpeed * (1 − min(|curvature[s+20]|, 1.1) * 0.45)
+        accel clamp:  −28 m/s² braking,  +11 m/s² accelerating
+
+  They look ahead 20 samples and brake for the bend. That is the entire AI.
+
+        i:        0     1     2     3     4     5     6
+        lane:  −6.5   +5.0  −3.0  +6.5  −5.0  +3.0  −1.5   (within roadHalf 14)
+        top:   82.8  88.2  93.6  99.0 104.4 109.8 115.2  km/h
+        gridS:   −6    −8   −13   −15   −20   −22   −27   (samples behind line)
+
+    Grid, staggered 2-wide:
+
+                    ⚑ ═══════════ START LINE ═══════════
+                        ▮6.5      ▮−6.5          ← row 1
+                        ▮6.5      ▮−3.0          ← row 2
+                        ▮5.0      ▮−5.0          ← row 3
+                        ▮3.0      ▮−1.5          ← row 4
+                                 ▮ ← YOU, on the centreline at startIdx
+
+    ★ The player starts AHEAD of the entire field, on the racing line, and
+      is far faster than the quickest AI (115 km/h vs. a player top speed
+      well north of 200). "1/8 POSITION" is the honest state at lights-out.
+      This is a brand demo dressed as a race — the field is scenery that
+      moves, and position is a number that goes down only if you crash a lot.
+
+    Liveries: blue, deep-orange, green, yellow, flamingo-pink, brown, grey —
+    each with an accent. AI cars use PANEL-TINTING (any source material with
+    saturation > 0.45 gets recoloured; structural greys/blacks are kept).
+    The PLAYER car uses the gradient instead:
+
+    ── The KASI livery: a baked 4-stop per-vertex gradient along the car's Z ──
+
+        REAR ───────────────────────────────────────────────► NOSE
+        t=0.00        t=0.36          t=0.70            t=1.00
+        #BE6BE0       #9BE86B         #5FC7F2           #16308A
+        violet   ───► light green ───► sky blue    ───► dark blue
+        ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░████████████
+
+    Computed ONCE at load by walking every vertex, transforming it to world
+    space, normalising z into [0,1] against the model bounding box, and
+    writing a colour attribute. Material is matFlat(white) with
+    vertexColors:true. Zero per-frame cost. Plus:
+      • a KASI logo plane on EACH sidepod, facing outward (alphaTest 0.3)
+      • a canvas-rendered "KASI" licence plate on the rear, facing −Z
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 11.  PAUSE                                                               │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Triggers: Esc, P, the #pauseBtn, or window blur (auto-pause on tab switch).
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
+  │▒▒  rgba(58,46,34,.45) + backdrop-filter: blur(4px)                    ▒▒│
+  │▒▒                                                                    ▒▒│
+  │▒▒                     P A U S E D                                    ▒▒│
+  │▒▒       ↑ clamp(40px,7vw,80px), cream, 5px/5px ink shadow α.15       ▒▒│
+  │▒▒                                                                    ▒▒│
+  │▒▒              ┌──────────────────────────┐                          ▒▒│
+  │▒▒              │      R E S U M E         │  ← solid --ink btn       ▒▒│
+  │▒▒              └──────────────────────────┘    hover → --orange      ▒▒│
+  │▒▒              ┌──────────────────────────┐                          ▒▒│
+  │▒▒              │  RESTART STAGE           │  ← .ghost, 3px cream     ▒▒│
+  │▒▒              └──────────────────────────┘    border, transparent   ▒▒│
+  │▒▒              ┌──────────────────────────┐    hover → --yellow      ▒▒│
+  │▒▒              │  QUIT TO MENU            │                          ▒▒│
+  │▒▒              └──────────────────────────┘    min-width 280px each  ▒▒│
+  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
+  └────────────────────────────────────────────────────────────────────────┘
+
+  What actually freezes:  Car.step, AI.update, Particles, crowd, and the
+  camera lerp are ALL inside `if (!G.paused)`. The scene still renders every
+  frame — you are looking at a live, motionless 3-D frame through a blur,
+  not a screenshot. The sun disc still billboards (harmless, invisible).
+  AudioEngine.update(0,0,0,false) ducks the engine immediately.
+
+  #pauseBtn glyph swaps ❚❚ ↔ ▶ to match state.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 12.  THE FINISH — cinematic + results                                    │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  Fires when G.prog ≥ Track.N * LAPS. finish() runs, and the car does NOT
+  stop. Control is handed to an autopilot and the camera becomes a shot
+  director. This is a victory lap you watch while reading your own numbers.
+
+  ── 12a. The autopilot ────────────────────────────────────────────────────
+
+        aim     = Track.pts[(lastIdx + 16) % N]         look 16 samples ahead
+        desired = atan2(aim − pos);  d = wrapPi(desired − heading)
+        left    = d >  0.04
+        right   = d < −0.04
+        bendAhead = |curvature[(lastIdx + 28) % N]|
+        up   = !(bendAhead > 0.45 && speed > 35)
+        down =  (bendAhead > 0.45 && speed > 35)
+
+  It runs the SAME Car.step() physics as the player. It drifts. It kicks up
+  dust. The crowd still cheers as it passes.
+
+  ── 12b. The shot director — 4 shots × 3500 ms, looping ───────────────────
+
+  SHOT 0 — TRACKSIDE (static, car drives through frame)
+    Camera parked at pts[lastIdx + 60], offset 22 units perpendicular, y=3.
+
+        ┌────────────────────────────────────┐
+        │  ░░ dunes ░░░░░░ palms ░░░░░░░░░░  │
+        │ ══════════════════════════════════ │
+        │      ╱▔▔╲  ──►                     │   car enters and exits
+        │  ●══╡KASI╞══●        ░dust░        │   the frame; camera never
+        │ ══════════════════════════════════ │   moves. Only lookTarget
+        │  ▯ ▯  crowd  ▯  ▯                  │   tracks (lerp dt*6).
+        └────────────────────────────────────┘
+
+  SHOT 1 — SLOW ORBIT (position recomputed every frame)
+    radius 16, height 6, angular velocity 0.55 rad/s (~11.4s per revolution,
+    so you see ~1/3 of an orbit per 3.5s shot).
+
+        camera.position = car + (cos(t*0.55)*16, 6, sin(t*0.55)*16)
+
+              ⊕ ⟳ ────────╮
+                    ╱▔▔╲   │  16 units
+              ●════╡KASI╞══●
+                    ╲__╱   │
+                ╰──────────╯
+
+  SHOT 2 — LOW NOSE-CAM (static, car drives AT camera)
+    18 units ahead of the car, y=1.6, looking back. The car grows in frame
+    and passes; when it overtakes the camera the shot becomes a rear view
+    until the cut.
+
+        ┌────────────────────────────────────┐
+        │                                    │
+        │           ╱▔▔▔▔▔▔╲                 │   ← almost eye-level with
+        │      ●═══╡  KASI  ╞═══●            │     the front wing
+        │     ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂       │
+        └────────────────────────────────────┘
+
+  SHOT 3 — HIGH AERIAL CHASE (loosely trailing)
+    34 units behind, 40 units UP, lerping toward the target at dt*1.2 — a
+    deliberately loose, drifting follow.
+
+        ┌────────────────────────────────────┐
+        │  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+        │  ══════════════════════════════    │   ← you can see the shape
+        │      ▪  ← the car, tiny             │     of the corner from here
+        │  ══════════════════════════════    │
+        │  ░░░░░░░░ ▲▲▲ palms ░░░░░░░░░░░░  │
+        └────────────────────────────────────┘
+
+    In every shot: lookTarget.lerp(car.pos, dt*6) — the AIM always lags the
+    car slightly, so even the static shots feel hand-held rather than locked.
+
+    ★ Cinema.until = 0 is set inside finish(), so the FIRST cut happens on the
+      very next frame. There is no beat of chase-cam before the cinematic.
+
+  Audio: the engine synth fades out over 3000 ms — max(0, 1 − (now−endTime)/3000)
+  passed as the AudioEngine volume multiplier. Simultaneously the finish
+  jingle plays: 660 → 880 → 1180 Hz, 130 ms apart, 160 ms each.
+
+  ── 12c. #results — a left-anchored panel over the live cinematic ──────────
+
+  The gradient background is the whole idea: SOLID cream on the left where
+  the numbers are, fading to fully transparent at 80% across, so the victory
+  lap keeps playing in the right half of the screen.
+
+        background: linear-gradient(90deg,
+          rgba(243,233,207,.97) 0%,     ← opaque, text lives here
+          rgba(243,233,207,.94) 36%,
+          rgba(243,233,207,.40) 62%,    ← ghosting
+          rgba(243,233,207,   0) 80%)   ← fully clear, live 3-D visible
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒░░░░░░                            │
+  │▓ S T A G E   C O M P L E T E ▓▒▒▒▒▒░░░░                                │
+  │▓                            ▓▒▒░░       ░░░░░ live cinematic ░░░░░     │
+  │▓ F I N I S H.               ▓░░                                        │
+  │▓  ↑ h2, --orange full stop  ▓            ╱▔▔╲                          │
+  │▓ ★ NEW SESSION BEST ★       ▓       ●══╡KASI╞══●   ← still driving     │
+  │▓                            ▓            ╲__╱                          │
+  │▓ FINAL TIME     TOP SPEED   ▓      ═══════════════                     │
+  │▓ 01:24.309      218 KM/H    ▓       ▯ ▯ crowd ▯                        │
+  │▓  ↑ .val.hl (orange)        ▓                                          │
+  │▓ DRIFT SCORE    SESSION BEST▓                                          │
+  │▓ 3417           01:24.309   ▓                                          │
+  │▓                            ▓                                          │
+  │▓ BATTERY USED   ENERGY      ▓                                          │
+  │▓ 34%            1.02 KWH    ▓                                          │
+  │▓                            ▓                                          │
+  │▓ AVG USE        REGEN       ▓                                          │
+  │▓ 486 WH/KM      0.31 KWH    ▓                                          │
+  │▓                            ▓                                          │
+  │▓ ┌────────┐ ┌────────┐      ▓                                          │
+  │▓ │ RETRY  │ │  MENU  │      ▓                                          │
+  │▓ └────────┘ └────────┘      ▓                                          │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  THE STAGGER — every element starts at opacity 0 and is animated in by
+  @keyframes statIn { from { opacity:0; translateX(−26px) } to { none } }.
+  Elements slide in from the LEFT, one at a time, over 2.8 seconds:
+
+        0.10s  ▸ STAGE COMPLETE          (.5s)
+        0.25s  ▸ FINISH.                 (.5s)
+        0.40s  ▸ ★ NEW SESSION BEST ★    (.5s)   only if isBest
+        0.60s  ▸ FINAL TIME              (.55s)
+        0.85s  ▸ TOP SPEED
+        1.10s  ▸ DRIFT SCORE
+        1.35s  ▸ SESSION BEST
+        1.60s  ▸ BATTERY USED
+        1.85s  ▸ ENERGY
+        2.10s  ▸ AVG USE
+        2.35s  ▸ REGEN
+        2.80s  ▸ [RETRY] [MENU]          (.6s)
+
+        ├──┼──┼──┼──┼──┼──┼──┼──┼──┼──┼──┼──┼──┼──┤
+        0        0.5       1.0       1.5       2.0       2.5      3.0s
+
+    250 ms between stats — slow enough that you READ each one. The buttons
+    are held back to 2.8s so you cannot skip past your own numbers.
+
+    ★ The delays are hard-coded as :nth-child(1..8). Add a ninth stat and it
+      will animate with NO delay (it inherits the base .stat rule with no
+      animation-delay) — it will appear before all the others. Extend the
+      nth-child list when you add stats.
+
+  ★ SESSION BEST is memory-only (G.bestTime). No localStorage. Refresh and
+    it is gone. #bestLine on the landing page shows it on return-to-menu.
+
+  ── 12d. Available inputs at the results screen ───────────────────────────
+
+        RETRY  / R key  →  startCountdown()   full reset, straight to "3"
+        MENU            →  toMenu(true)
+        Esc / P         →  ignored (setPaused early-returns unless state==='race')
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 13.  RETURN TO MENU — the reverse transition                             │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+        toMenu(scrollToEnd = true):
+          state = 'menu';  hud/pause/results/countdown all display:none
+          body.playing removed   → #story, rails, toggles, grain, title
+                                   ALL reappear at once; scroll unlocks
+          body.ended   removed
+          Hero.show(true):
+              #landing .fade and .gone removed  → opacity transitions 0→1
+              active = true;  heroPhaseActive = true
+                                 → the GAME LOOP short-circuits again
+                                   (the race scene stops rendering entirely)
+              body.hero-phase added  → .tilt + #hud hidden
+              scrollTo(0, scrollMax())    ← JUMPS TO THE BOTTOM
+              onScroll()                  → pTarget = 1.0
+          #bestLine = "SESSION BEST — MM:SS.mmm"
+          reset()
+
+  ★ scrollToEnd = true is the key UX decision. You do NOT get dumped back at
+    the top of a seven-screen brand story after every race. You land exactly
+    where you left — CH5, car on the grid, START ENGINE lit — one click from
+    racing again. The only path that uses scrollToEnd = false is the very
+    first toMenu(false) call at boot, which puts you at the top for the
+    arrival frame.
+
+  ★ p does NOT jump — pTarget jumps to 1.0 and p eases toward it at the usual
+    1/7s time constant. So the hero camera glides into the K6 pose over ~400ms
+    while #landing fades back in over 800ms. The two overlap, which is what
+    makes the return feel like a pull-back rather than a cut.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 14.  MOBILE — what changes below 720px / on coarse pointers              │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ── 14a. Layout (≤720px) ──────────────────────────────────────────────────
+
+    .chapter        forced to justify-start / align-END / text-align LEFT
+                    ★ !important on all three — the per-chapter data-align
+                      system is completely overridden. Every chapter becomes
+                      bottom-left copy. .tall drops 132vh → 118vh.
+    Hero camera     FOV 38 → 54, camera pulled back 12%, side offset → 0
+    #chargeRail     rotates to a horizontal bar at the bottom
+    #heroTitle      padding-bottom 16vh
+    .chapter.final  110vh, align-items:flex-start, padding-top 12vh
+                    (lifts copy off the car + START button)
+    ASCII effect    DISABLED entirely (pointer:fine gate)
+
+  ── 14b. Touch controls (@media pointer:coarse) ───────────────────────────
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  NAKURU · LANGA LANGA    00:12.4                       1/8         ⏸    │
+  │  LAP 1/1                                            ▬▬▬▬▬ 92%          │
+  │  ┌──────┐                                                              │
+  │  │ ╭──╮ │                        ╱▔▔╲                                   │
+  │  │ │ ◉│ │                   ●══╡KASI╞══●                               │
+  │  │ ╰──╯ │                        ╲__╱                                   │
+  │  └──────┘                                                              │
+  │                                                                        │
+  │  DRIFT                                                                 │
+  │  842 PTS                                                    2 1 4      │
+  │           ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬░░░░░░                            KM/H        │
+  │                                                                        │
+  │   ╭────╮ ╭────╮                          ╭──────╮  ╭────────╮          │
+  │   │ ◄  │ │  ► │                          │BRAKE │  │  GAS   │          │
+  │   ╰────╯ ╰────╯                          ╰──────╯  ╰────────╯          │
+  │    78px   78px                             78px      94px, orange α.5  │
+  │    ink α.38                                          :active α.7       │
+  └────────────────────────────────────────────────────────────────────────┘
+       ↑ .tGroup.left, bottom: 26px + env(safe-area-inset-bottom)
+
+    Everything above the buttons is pushed up: #speedo 30→160, #driftTag
+    118→248, #driftScore 96→226, #progWrap 34→130.
+
+    Buttons write into the SAME Input key-state object as the keyboard, via
+    pointerdown/pointerup with setPointerCapture. touch-action:none and
+    -webkit-tap-highlight-color:transparent, contextmenu prevented.
+
+    ★ There is NO handbrake button. Space/hand is keyboard-only. On touch you
+      can never trigger the 6×-grip-reduction drift mode. The single most
+      characterful mechanic in the game is unreachable on a phone. ★★
+
+  ── 14c. Mobile results ───────────────────────────────────────────────────
+
+    body.ended → #hud fades to opacity 0 over .45s (kills the overlapping
+    top numbers, the pause button, AND the gas/brake/steer controls, all of
+    which live inside #hud).
+    #results becomes full-width, top-aligned, SCROLLABLE, opaque
+    (linear-gradient 180deg, .98 → .98 — the see-through cinematic panel is
+    abandoned), 2-column stat grid at 19px, buttons flex:1 side by side.
+
+  ── 14d. prefers-reduced-motion: reduce ───────────────────────────────────
+
+    .rv         → opacity 1, no transform, no transition
+    .mask > span→ no transform, no transition
+    .tick-inner → animation: none
+
+    ★ NOT covered by the reduced-motion query: the scroll-driven 3-D camera,
+      the auto-spin, the hint bob, the marquee's siblings, and the entire
+      finish cinematic. A user who has asked for reduced motion still gets
+      a camera flying around a car. If you need real compliance, the gate
+      belongs in Hero.frame() and Cinema, not just the CSS.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 15.  STATE MACHINE                                                       │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+                      ┌───────────────────────────────────────┐
+                      │                                       │
+                      ▼                                       │
+        ┌──────────────────────────┐                          │
+        │  'menu'                  │  heroPhaseActive = true  │
+        │  hero live, story        │  → GAME LOOP RETURNS     │
+        │  scrollable, p ⇢⇢ camera │    IMMEDIATELY           │
+        └────────────┬─────────────┘                          │
+                     │ #startBtn click                        │
+                     ▼                                        │
+        ┌──────────────────────────┐                          │
+        │  'countdown'             │  Hero.fadeOut()          │
+        │  3 · 2 · 1               │  heroPhaseActive = false │
+        │  physics live, no input  │  → GAME LOOP WAKES       │
+        └────────────┬─────────────┘                          │
+                     │ e ≥ 3s → "GO!"                         │
+                     ▼                                        │
+        ┌──────────────────────────┐                          │
+        │  'race'   ◄──────────────┼── G.paused = false       │
+        │  full input, HUD, timer  │                          │
+        │  ─────────────────────►  │── G.paused = true        │
+        └────────────┬─────────────┘   (Esc / P / btn / blur) │
+                     │ prog ≥ N × LAPS                        │
+                     ▼                                        │
+        ┌──────────────────────────┐                          │
+        │  'end'                   │                          │
+        │  autopilot + Cinema      │  RETRY / R ──► 'countdown'
+        │  results stagger         │  MENU ───────────────────┘
+        └──────────────────────────┘
+
+    ★ G.paused is a FLAG, not a state. 'race' + paused is still 'race'.
+      setPaused() early-returns unless state === 'race', which is why Esc
+      does nothing on the results screen.
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 16.  FRAME BUDGET — who renders what, when                               │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  TWO independent requestAnimationFrame loops run for the entire life of the
+  page. Each is gated so that exactly one does real work at any moment:
+
+    Hero.frame()                     Game.loop()
+    ┌──────────────────────┐         ┌──────────────────────┐
+    │ if (!active) return; │         │ if (heroPhaseActive) │
+    │                      │         │      return;         │
+    │ ease p               │         │                      │
+    │ interpolate keyframe │         │ countdown / physics  │
+    │ set car quaternion   │         │ AI, particles, crowd │
+    │ revealEnv            │         │ HUD writes, minimap  │
+    │ rail % + title α     │         │ camera lerp          │
+    │ renderHero()  ───────┼─────┐   │ render(scene,camera) │
+    │   [ASCII 2-pass or   │     │   └──────────┬───────────┘
+    │    plain render]     │     │              │
+    └──────────────────────┘     ▼              ▼
+                            ONE WebGLRenderer, ONE canvas, ONE GL context
+
+  Cost characteristics worth knowing:
+
+    Hero phase, cursor moving, top of page   2 draws (RT + fullscreen quad)
+    Hero phase, scrolled > 25% viewport      1 draw  (post-process bypassed)
+    Race                                     1 draw + a 150×150 canvas2d blit
+                                             + ~12 DOM text writes per frame
+
+  ★ THE DOM WRITE COST: the race loop writes textContent to timer, speed,
+    driftScore, battPct, battKwh, lapVal and style.width to progFill and
+    battFill EVERY FRAME. That is 8+ style/layout touches at 60Hz. Only
+    #posTag is change-guarded. If you ever profile a jank spike on a low-end
+    phone, start here — everything except the timer could be throttled to
+    10Hz with zero perceptible difference.
+
+  ★ Minimap.draw() clears and re-blits a cached 150×150 offscreen canvas plus
+    8 arcs every frame. Also a candidate for throttling.
+
+  ★ InstancedMesh is used for every repeated species (dunes, palms, acacias,
+    rocks, huts, flamingos, posts, dashes, crowd bodies, crowd heads) —
+    which is why a scene with hundreds of objects is a handful of draw calls.
+    Only the crowd's instanceMatrix is updated per-frame; everything else is
+    written once at construction.
+
+  ★ Scenery layout is deterministic (LCG seeded 20260706). Screenshots and
+    bug reports are reproducible. Do not replace rnd() with Math.random().
+
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ 17.  QUICK-REFERENCE — every tunable that changes how it FEELS           │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+    SCROLL FEEL
+      p ease rate           7      exp(−dt*7); higher = snappier, less buttery
+      ASCII sleep gate      0.25   viewports of scroll before the effect dies
+      startWrap threshold   0.965  how close to the bottom before START lights
+      envGroup window       0.80 → 0.96   when the world materialises
+
+    CAMERA
+      camBack / camHeight   30 / 14   MUST match KEYS[6].cam for the match-cut
+      camZoom               0.30      pull-back at top speed
+      camLerp               3.2       position lag (aim lag is 1.6× this)
+      FOV                   38 desktop / 54 mobile hero
+
+    DRIVING
+      accel / brake         46 / 62
+      grip                  100 tarmac / 30 sand / 16 handbrake  ← the feel
+      latStiff              11        how hard tyres fight slip
+      driftLatMin           7         m/s of slide before DRIFT lights up
+      driftBoost            1.35      extra steering while sliding
+      steerRate / steerLerp 2.9 / 9
+
+    RACE
+      LAPS                  1
+      BATT_KWH              3.0
+      AI topSpeed           23 + i*1.5 m/s   (deliberately slower than you)
+      cheerDist             26        crowd activation radius
+
+    TIMING
+      countdown             3.0s + 0.8s of "GO!"
+      Cinema shot length    3500ms × 4 shots
+      results stagger       0.1s → 2.8s
+      engine fade-out       3000ms
+      landing dissolve      800ms
+      reveal / mask         800ms / 900ms, staggered 90ms per --i
+      counters              1250ms easeOutCubic
+      marquee               26s per cycle (content duplicated ×2 — keep it so)
+
+
+================================================================================
+
+   THE ONE-PARAGRAPH VERSION, for whoever inherits this:
+
+   A cream preloader charges a KASI wordmark like a battery, then dissolves
+   onto a white void holding a single gradient-liveried F1 car that spins
+   slowly and turns into ASCII glyphs wherever your cursor hovers. Scrolling
+   does not move the page past the car — it moves a CAMERA around it, along a
+   seven-keyframe orbit, while five chapters of brand copy slide in from the
+   opposite side of the screen and the 3-D background lerps through the
+   active colour scheme. A vertical rail on the right reads your scroll
+   position as state-of-charge. At the bottom of the scroll a sand ground and
+   a chequered start line fade in underneath the car, the camera settles into
+   the exact pose the game's chase camera uses, and START ENGINE lights up
+   directly beneath the car. Clicking it dissolves the white stage off a
+   fully-built Rift Valley circuit — flamingos, dunes, acacias, a jumping
+   crowd — counts you down, and hands you a drift model whose entire
+   character lives in one grip constant. One lap later the car keeps driving
+   itself while four cinematic camera shots cycle behind a half-transparent
+   panel that slides your telemetry in, one number every 250 ms. MENU puts
+   you back at the bottom of the scroll, one click from doing it again.
+
+   Every screen is one HTML file. Every colour is a CSS custom property whose
+   VALUE is swapped at runtime. Every repeated object is an InstancedMesh.
+   Every random placement is seeded. Nothing here is an accident.
+
+                                                                      ( ^_^ )/
+                                                            drawn with a smile
+================================================================================

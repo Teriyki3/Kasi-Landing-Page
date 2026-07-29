@@ -15,7 +15,6 @@
     --cream:#F3E9CF; --ink:#3A2E22; --orange:#E8542F;
     --yellow:#F2C43D; --blue:#4E9FCE; --sand:#C9BE7E;
     --green:#6FBF73; --paper:#F3E9CF;
-    --ink-rgb:58,46,34; --paper-rgb:243,233,207;
     --font-display:'Unbounded','Arial Black',sans-serif;
     --font-body:'Archivo','Helvetica Neue',Arial,sans-serif;
     --font-mono:'IBM Plex Mono','Courier New',monospace;
@@ -78,16 +77,15 @@
   .chapter[data-align="left"]{justify-content:flex-start;align-items:center;}
   .chapter[data-align="right"]{justify-content:flex-end;align-items:center;text-align:right;}
   .chapter[data-align="center"]{justify-content:center;align-items:center;text-align:center;}
-  .wrap{max-width:min(560px,90vw);}
+  /* The wrap is sized for the DISPLAY TYPE, not the reading column — the giant
+     headings are far wider than 560px and .mask's overflow:hidden was
+     amputating the end of any long line ("continental." overran by 242px).
+     The narrow children keep their own caps below, so the reading measure is
+     unchanged and flex alignment still handles left/right for free. */
+  .wrap{max-width:min(1320px,92vw);}
   .chapter[data-align="center"] .wrap{max-width:min(820px,92vw);}
 
   /* ---- typographic system ---- */
-  .eyebrow{font-family:var(--font-mono);font-size:12px;font-weight:500;
-    letter-spacing:5px;text-transform:uppercase;color:var(--fg-soft);
-    display:flex;align-items:center;gap:12px;margin-bottom:22px;}
-  .chapter[data-align="right"] .eyebrow{justify-content:flex-end;}
-  .chapter[data-align="center"] .eyebrow{justify-content:center;}
-  .eyebrow::before{content:"";width:34px;height:1px;background:currentColor;opacity:.5;}
   .h-giant{font-family:var(--font-display);font-weight:900;
     font-size:clamp(52px,11vw,150px);line-height:.86;letter-spacing:-.02em;
     text-transform:uppercase;margin:0;}
@@ -103,25 +101,34 @@
     margin-top:26px;max-width:46ch;}
   .chapter[data-align="right"] .lede{margin-left:auto;}
   .lede b,.lede strong{color:var(--fg);font-weight:600;}
-  .ipa{font-family:var(--font-mono);font-size:.62em;color:var(--fg-soft);
-    letter-spacing:2px;vertical-align:middle;}
+  /* phonetic line — now a standalone row under the ch1 wordmark, so it carries
+     its own size instead of inheriting from the deleted .h-giant */
+  .ipa{font-family:var(--font-mono);font-size:clamp(15px,2vw,26px);
+    color:var(--fg-soft);letter-spacing:2px;margin-top:14px;}
+  /* the KASI wordmark as section 01's title (hero logo docks onto this slot) */
+  .kasi-mark{width:min(100%,460px);height:auto;display:block;}
 
   /* ---- scroll reveal ---- */
   .rv{opacity:0;transform:translateY(38px);
     transition:opacity .8s cubic-bezier(.2,.75,.2,1),transform .8s cubic-bezier(.2,.75,.2,1);
     transition-delay:calc(var(--i,0)*90ms);}
   .rv.in{opacity:1;transform:none;}
-  /* padding gives the display-font glyphs horizontal + vertical room so edge
-     letters aren't clipped; the negative margin cancels the layout shift */
-  .mask{display:block;overflow:hidden;padding:.08em .14em;margin:0 -.14em;}
-  .mask>span{display:block;transform:translateY(120%);
+  /* padding gives the display-font glyphs room so edge letters aren't clipped by
+     the overflow box — extra at the bottom for descenders (the y in "Chemistry"
+     / "telemetry") since line-height .86 crops them. The negative margin cancels
+     the layout shift on all four sides. */
+  .mask{display:block;overflow:hidden;
+    padding:.22em .18em .26em;margin:-.22em -.18em -.26em;}
+  .mask>span{display:block;transform:translateY(140%);
     transition:transform .9s cubic-bezier(.16,.84,.3,1);
     transition-delay:calc(var(--i,0)*90ms);}
   .mask.in>span,.in .mask>span{transform:none;}
 
   /* ---- battery-stat grid (chapter 2 & 3) ---- */
+  /* capped independently of .wrap so the stat columns keep their tight measure */
   .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);
-    gap:34px 48px;margin-top:48px;}
+    gap:34px 48px;margin-top:48px;max-width:560px;}
+  .chapter[data-align="right"] .stats-grid{margin-left:auto;}
   .kstat{border-top:1px solid var(--hair);padding-top:16px;}
   .kstat .num{font-family:var(--font-display);font-weight:800;
     font-size:clamp(34px,4.4vw,58px);line-height:1;letter-spacing:-.02em;
@@ -180,26 +187,26 @@
   #railLabel{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;
     color:var(--fg-soft);text-transform:uppercase;writing-mode:vertical-rl;}
 
-  /* ---- sound toggle ---- */
-  #soundToggle{position:fixed;top:24px;right:24px;z-index:26;
-    width:auto;height:38px;padding:0 16px;border:1px solid var(--hair);
-    border-radius:20px;background:transparent;color:var(--fg);cursor:pointer;
-    font-family:var(--font-mono);font-size:10px;letter-spacing:2px;
-    text-transform:uppercase;display:flex;align-items:center;gap:9px;
+  /* ---- page controls: theme + sound, paired top-right ---- */
+  #soundToggle,#themeToggle{position:fixed;top:24px;z-index:26;
+    width:34px;height:34px;padding:0;border:1px solid var(--hair);
+    border-radius:50%;background:transparent;color:var(--fg);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
     transition:opacity .4s ease,border-color .3s,color .5s;}
-  #soundToggle:hover{border-color:var(--fg);}
-  #soundToggle .dot{width:7px;height:7px;border-radius:50%;
-    background:var(--fg-soft);transition:background .3s;}
-  #soundToggle.on .dot{background:var(--orange);box-shadow:0 0 8px var(--orange);}
-
-  /* ---- palette switcher (bird colour schemes) ---- */
-  #palettePicker{position:fixed;top:24px;left:24px;z-index:26;display:flex;
-    align-items:center;gap:8px;transition:opacity .4s ease;}
-  #palettePicker .pswatch{width:20px;height:20px;border-radius:50%;padding:0;
-    border:2px solid transparent;cursor:pointer;
-    box-shadow:0 0 0 1px var(--hair);transition:transform .2s,border-color .2s;}
-  #palettePicker .pswatch:hover{transform:scale(1.15);}
-  #palettePicker .pswatch.sel{border-color:var(--fg);transform:scale(1.15);}
+  #soundToggle:hover,#themeToggle:hover{border-color:var(--fg);}
+  #soundToggle svg,#themeToggle svg{width:16px;height:16px;display:block;
+    fill:none;stroke:currentColor;stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round;}
+  #themeToggle{right:24px;}
+  #soundToggle{right:68px;color:var(--fg-soft);}
+  /* the two sound-wave arcs only exist when the ambience is on */
+  #soundToggle .waves{opacity:0;transition:opacity .3s;}
+  #soundToggle.on{color:var(--orange);}
+  #soundToggle.on .waves{opacity:1;}
+  /* sun (light mode) vs moon (dark mode) — one is always hidden */
+  #themeToggle .moon{display:none;}
+  #themeToggle.dark .moon{display:block;}
+  #themeToggle.dark .sun{display:none;}
 
   /* ---- grain overlay ---- */
   #grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.045;
@@ -224,7 +231,7 @@
 
   /* ---- hide all story chrome once the race is live ---- */
   body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
-  body.playing #heroTitle,body.playing #grain,body.playing #palettePicker{display:none;}
+  body.playing #heroTitle,body.playing #grain,body.playing #themeToggle{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -414,10 +421,10 @@
 <div id="grain"></div>
 
 <!-- ambience toggle -->
-<button id="soundToggle" aria-label="Toggle sound"><span class="dot"></span>SOUND</button>
+<button id="soundToggle" aria-label="Toggle sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><g class="waves"><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></g></svg></button>
 
-<!-- bird-palette colour-scheme switcher (populated by JS) -->
-<div id="palettePicker" aria-label="Colour scheme"></div>
+<!-- light / dark theme toggle -->
+<button id="themeToggle" aria-label="Toggle dark mode" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></g><path class="moon" d="M20 13.6A8 8 0 0 1 10.4 4a8.2 8.2 0 1 0 9.6 9.6z"/></svg></button>
 
 <!-- charge rail: scroll = state of charge -->
 <div id="chargeRail">
@@ -448,9 +455,9 @@
   <!-- CH1 — the name -->
   <section class="chapter" id="ch1" data-theme="cream" data-align="left">
     <div class="wrap">
-      <div class="eyebrow rv">01 — The Name</div>
-      <h2 class="h-giant rv" style="--i:1"><span class="mask"><span>KASI</span></span>
-        <span class="ipa">/ˈka·si/</span></h2>
+      <!-- the hero wordmark flies down and lands on this slot (see dockHeroLogo) -->
+      <img class="kasi-mark rv" id="ch1Logo" alt="KASI">
+      <div class="ipa rv" style="--i:1">/ˈka·si/</div>
       <p class="lede rv" style="--i:2">South African, from <b>lokasie</b> — the location, the township, the
         neighbourhood. The place that makes you. We build batteries the way the kasi builds
         drivers: with <b>everything we have</b>, and nothing wasted.</p>
@@ -469,22 +476,21 @@
   <!-- CH2 — the battery (SIGNATURE: pack dives out & explodes) -->
   <section class="chapter tall" id="ch2" data-theme="ink" data-align="left">
     <div class="wrap">
-      <div class="eyebrow rv">02 — The Pack</div>
-      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Chemistry,</span></span>
+      <h2 class="h-big rv"><span class="mask"><span>Chemistry,</span></span>
         <span class="mask"><span class="accent">continental.</span></span></h2>
-      <p class="lede rv" style="--i:2">A prismatic pack engineered cell-up for African heat, dust and
+      <p class="lede rv" style="--i:1">A prismatic pack engineered cell-up for African heat, dust and
         distance — not adapted from somewhere colder. Watch it come apart.</p>
       <div class="stats-grid">
-        <div class="kstat rv" style="--i:2">
+        <div class="kstat rv" style="--i:1">
           <div class="num"><span data-count="412">0</span><span class="suf">Wh/kg</span></div>
           <div class="cap">Energy density</div></div>
-        <div class="kstat rv" style="--i:3">
+        <div class="kstat rv" style="--i:2">
           <div class="num"><span data-count="6000" data-sep="1">0</span></div>
           <div class="cap">Charge cycles</div></div>
-        <div class="kstat rv" style="--i:4">
+        <div class="kstat rv" style="--i:3">
           <div class="num"><span data-count="94">0</span><span class="suf">%</span></div>
           <div class="cap">Recyclable by mass</div></div>
-        <div class="kstat rv" style="--i:5">
+        <div class="kstat rv" style="--i:4">
           <div class="num"><span data-count="55">0</span><span class="suf">°C peak</span></div>
           <div class="cap">Operating envelope</div></div>
       </div>
@@ -494,16 +500,15 @@
   <!-- CH3 — data / telemetry ethos -->
   <section class="chapter tall" id="ch3" data-theme="orange" data-align="right">
     <div class="wrap">
-      <div class="eyebrow rv">03 — Proven in Data</div>
-      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Every lap</span></span>
+      <h2 class="h-big rv"><span class="mask"><span>Every lap</span></span>
         <span class="mask"><span>is telemetry.</span></span></h2>
-      <p class="lede rv" style="--i:2">Draw, regen and efficiency, logged in real kilometres. The same
+      <p class="lede rv" style="--i:1">Draw, regen and efficiency, logged in real kilometres. The same
         numbers you're about to race with — <b>we don't model performance, we measure it.</b></p>
       <div class="stats-grid" style="grid-template-columns:repeat(2,1fr)">
-        <div class="kstat rv" style="--i:3">
+        <div class="kstat rv" style="--i:2">
           <div class="num"><span data-count="138">0</span><span class="suf">Wh/km</span></div>
           <div class="cap">Avg race draw</div></div>
-        <div class="kstat rv" style="--i:4">
+        <div class="kstat rv" style="--i:3">
           <div class="num"><span data-count="31">0</span><span class="suf">% regen</span></div>
           <div class="cap">Recovered under braking</div></div>
       </div>
@@ -522,23 +527,21 @@
   <!-- CH4 — heritage / Nakuru -->
   <section class="chapter tall" id="ch4" data-theme="blue" data-align="left">
     <div class="wrap">
-      <div class="eyebrow rv">04 — The Proving Ground</div>
-      <h2 class="h-big rv" style="--i:1"><span class="mask"><span>Langa Langa,</span></span>
+      <h2 class="h-big rv"><span class="mask"><span>Langa Langa,</span></span>
         <span class="mask"><span>Nakuru.</span></span></h2>
-      <p class="lede rv" style="--i:2">2.1 lakeside kilometres, raced from <b>1956 to 1988</b>. Flamingos on the
+      <p class="lede rv" style="--i:1">2.1 lakeside kilometres, raced from <b>1956 to 1988</b>. Flamingos on the
         water, dust on the exit kerbs. We test where motorsport in Africa began — and we brought
         the circuit with us.</p>
-      <p class="lede rv" style="--i:3" >Scroll on. The car is finding its grid slot.</p>
+      <p class="lede rv" style="--i:2" >Scroll on. The car is finding its grid slot.</p>
     </div>
   </section>
 
   <!-- CH5 — ethos + finale (START ENGINE lives in #landing overlay) -->
   <section class="chapter final" id="ch5" data-theme="white" data-align="left">
     <div class="wrap">
-      <div class="eyebrow rv">05 — Art × Engineering</div>
-      <h2 class="h-giant rv" style="--i:1"><span class="mask"><span>Half studio.</span></span>
+      <h2 class="h-giant rv"><span class="mask"><span>Half studio.</span></span>
         <span class="mask"><span class="accent">Half lab.</span></span></h2>
-      <p class="lede rv" style="--i:2">KASI is where the draughtsman and the electrochemist share a bench.
+      <p class="lede rv" style="--i:1">KASI is where the draughtsman and the electrochemist share a bench.
         You've read the spec — now feel it. <b>Full charge. Prove it on the circuit.</b></p>
     </div>
   </section>
@@ -612,6 +615,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
 <!-- F1 car model embedded as a base64 data-URI so it loads with no network
      fetch (works when index.html is opened directly from disk / file://) -->
 <script src="car_model.js"></script>
@@ -1436,52 +1440,220 @@ function applyLengthGradient(mesh){     // bake per-vertex colours along car len
   geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
-function makeKasiPlate(text){
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
-  const cx = cv.getContext('2d');
-  cx.fillStyle = '#F3E9CF'; cx.fillRect(0,0,256,96);
-  cx.strokeStyle = '#3A2E22'; cx.lineWidth = 10; cx.strokeRect(0,0,256,96);
-  cx.fillStyle = '#3A2E22'; cx.font = 'bold 62px "Arial Black", Arial, sans-serif';
-  cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, 128, 52);
-  const b = CAR.box, w = Math.min((b.max.x - b.min.x) * 0.5, 1.1), h = w * 0.36;
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) }));
-  plate.position.set(0, b.min.y + (b.max.y - b.min.y) * 0.42, b.min.z - 0.02);
-  plate.rotation.y = Math.PI;                       // face rearward (-Z)
-  return plate;
-}
-
 // KASI logo (data-URI from kasi_logo.js) → hero title image + car side decals
 const KASI_LOGO_SRC = (typeof window !== 'undefined' && window.KASI_LOGO) || 'kasi_logo.png';
-{ const el = document.getElementById('kasiLogo'); if (el) el.src = KASI_LOGO_SRC; }
+{ const el = document.getElementById('kasiLogo'); if (el) el.src = KASI_LOGO_SRC;
+  const c1 = document.getElementById('ch1Logo'); if (c1) c1.src = KASI_LOGO_SRC; }
 const LOGO_ASPECT = 1500 / 428;
 const logoTex = new THREE.TextureLoader().load(KASI_LOGO_SRC);
 logoTex.encoding = THREE.sRGBEncoding;
-function makeCarLogos(){                 // a KASI decal on each sidepod
+
+// Fire a ray at the model from just outside its bounding box; return the
+// first hit (mesh + world-space point/normal), or null if it misses.
+const _decalRC = new THREE.Raycaster();
+const _decalUp = new THREE.Vector3(0, 1, 0);
+function probeSurface(model, origin, direction){
+  _decalRC.set(origin, direction.clone().normalize());
+  const hits = _decalRC.intersectObject(model, true);
+  if (!hits.length) return null;
+  const hit = hits[0];
+  const normal = hit.face.normal.clone()
+    .transformDirection(hit.object.matrixWorld).normalize();
+  return { mesh: hit.object, point: hit.point, normal };
+}
+
+// KASI decal, projected onto the real bodywork at each spot so it wraps the
+// surface like painted livery rather than floating as a flat sticker.
+function makeCarLogos(model){
   const g = new THREE.Group(), b = CAR.box;
-  const len = b.max.z - b.min.z, halfW = (b.max.x - b.min.x) / 2;
-  const w = len * 0.32, h = w / LOGO_ASPECT;               // proportional to the car
-  const cy = b.min.y + (b.max.y - b.min.y) * 0.46;
-  const geo = new THREE.PlaneGeometry(w, h);
-  const mat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true,
-    alphaTest: 0.3, side: THREE.DoubleSide, depthWrite: false });
-  for (const s of [1, -1]){
-    const p = new THREE.Mesh(geo, mat);
-    p.position.set(s * halfW * 0.64, cy, 0);
-    p.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2;      // face outward
-    g.add(p);
+  const len = b.max.z - b.min.z, hgt = b.max.y - b.min.y, halfW = (b.max.x - b.min.x) / 2;
+  if (typeof THREE.DecalGeometry !== 'function'){    // CDN fallback: flat side plates
+    const w = len * 0.32, h = w / LOGO_ASPECT;
+    const cy = b.min.y + hgt * 0.46;
+    const geo = new THREE.PlaneGeometry(w, h);
+    const fmat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true,
+      alphaTest: 0.3, side: THREE.DoubleSide, depthWrite: false });
+    for (const s of [1, -1]){
+      const p = new THREE.Mesh(geo, fmat);
+      p.position.set(s * halfW * 0.64, cy, 0);
+      p.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2;
+      g.add(p);
+    }
+    return g;
+  }
+  const mat = new THREE.MeshBasicMaterial({
+    map: logoTex, transparent: true, alphaTest: 0.25,
+    depthTest: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+  });
+  // Build an orientation with a definite "up" so the wordmark stays level
+  // instead of landing at whatever roll setFromUnitVectors happens to pick.
+  const worldUp = new THREE.Vector3(0, 1, 0), worldFwd = new THREE.Vector3(0, 0, 1);
+  const right = new THREE.Vector3(), up = new THREE.Vector3(), m4 = new THREE.Matrix4();
+  function basisFromNormal(normal, roll){
+    const ref = Math.abs(normal.y) > 0.95 ? worldFwd : worldUp;   // top-facing: use fwd as reference
+    right.crossVectors(ref, normal).normalize();
+    up.crossVectors(normal, right).normalize();
+    m4.makeBasis(right, up, normal);
+    const e = new THREE.Euler().setFromRotationMatrix(m4);
+    e.z += roll;              // extra spin around the surface normal
+    return e;
+  }
+
+  // Scan a small grid of ray origins and keep the hit that produces the
+  // *cleanest* decal (fewest resulting vertices) among those whose normal
+  // roughly matches `want` — vertex count is a direct proxy for "flat,
+  // unobstructed panel" vs. one that clips a rib, vent or seam nearby and
+  // shreds into hundreds of stray triangles.
+  function findFlatSpot(originFn, steps, direction, want, w, roll){
+    const h = w / LOGO_ASPECT;
+    let best = null, bestVerts = Infinity;
+    for (const t of steps){
+      const hit = probeSurface(model, originFn(t), direction);
+      if (!hit || hit.normal.dot(want) < 0.85) continue;
+      const euler = basisFromNormal(hit.normal, roll);
+      const geo = new THREE.DecalGeometry(hit.mesh, hit.point, euler, new THREE.Vector3(w, h, w * 0.2));
+      const verts = geo.attributes.position.count;
+      if (verts < bestVerts){ bestVerts = verts; best = geo; }
+    }
+    return best;
+  }
+
+  function addDecal(geo){
+    if (geo) g.add(new THREE.Mesh(geo, mat));    // miss: skip rather than float
+  }
+
+  const grid = (aFn, bList) => bList.flatMap(bv => aFn.map(av => [av, bv]));
+
+  // Rear wing: no decal. Every rear-facing probe point on this model clips a
+  // rib or edge within 0.1-0.2 units and shreds the projection into an
+  // unreadable sliver, so the mark would not survive back there.
+
+  // engine cover flank, both sides — the driver's-door panel by the cockpit.
+  // This is the only placement; the wordmark reads cleanly here from any
+  // three-quarter or broadside angle.
+  for (const s of [1, -1])
+    addDecal(findFlatSpot(
+      ([z, y]) => new THREE.Vector3(s * halfW * 1.6, y, z),
+      grid([b.min.z + len * 0.56, b.min.z + len * 0.59, b.min.z + len * 0.62],
+           [b.min.y + hgt * 0.33, b.min.y + hgt * 0.35, b.min.y + hgt * 0.37]),
+      new THREE.Vector3(-s, 0, 0), new THREE.Vector3(s, 0, 0),
+      len * 0.12, 0
+    ));
+
+  return g;
+}
+
+/* ===================================================================
+   WHEELS — the GLB separates cleanly by node name, so tyres and rims can
+   be styled apart from the bodywork (before this they all took the livery
+   gradient, which is why the tyres came out rainbow-coloured):
+     Object_4          → all four tyres, one mesh
+     Object_5, Object_8 → the four rims / hubs (3 + 1)
+     everything else   → bodywork, keeps the length gradient
+   =================================================================== */
+const TYRE_MESH = 'Object_4';
+const RIM_MESHES = ['Object_5', 'Object_8'];
+
+/* Procedural equirect environment so the chrome has something to reflect.
+   Built on a canvas rather than fetched, so the page still works from
+   file://. The bright horizon band is what makes the rims glisten as the
+   car turns. Colours track the active theme. */
+let carEnvTex = null;
+function setCarEnv(scheme){
+  const sky = (scheme && scheme.stops && scheme.stops.white) || '#FFF3D6';
+  const ground = (scheme && scheme.sand) || '#D9B87C';
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
+  const cx = cv.getContext('2d');
+  const g = cx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0.00, sky);
+  g.addColorStop(0.42, '#ffffff');           // bright band just above the horizon
+  g.addColorStop(0.52, '#ffffff');
+  g.addColorStop(0.56, ground);
+  g.addColorStop(1.00, ground);
+  cx.fillStyle = g; cx.fillRect(0, 0, 256, 128);
+  // a couple of soft highlights so the reflection has features to sweep past
+  cx.globalAlpha = 0.55; cx.fillStyle = '#ffffff';
+  cx.beginPath(); cx.ellipse(60, 40, 34, 16, 0, 0, Math.PI*2); cx.fill();
+  cx.beginPath(); cx.ellipse(190, 30, 26, 12, 0, 0, Math.PI*2); cx.fill();
+  cx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  if (carEnvTex) carEnvTex.dispose();
+  carEnvTex = tex;
+  if (matRim) { matRim.envMap = tex; matRim.needsUpdate = true; }
+  return tex;
+}
+
+/* Deliberately Phong + envMap, not MeshStandardMaterial: real PBR metal needs
+   renderer.outputEncoding = sRGBEncoding, which is unset here — flipping it
+   would recolour every material on both scenes and shift the ASCII effect.
+   flatShading must stay false or the faceted normals shatter the reflection. */
+let matTyre = null, matRim = null;
+function wheelMaterials(){
+  if (!matTyre) {
+    matTyre = new THREE.MeshPhongMaterial({ color:0x0B0B0C, flatShading:false,
+      shininess:18, specular:0x222222 });
+    matRim = new THREE.MeshPhongMaterial({ color:0xffffff, flatShading:false,
+      envMap: carEnvTex || setCarEnv(null), combine: THREE.MixOperation,
+      reflectivity:0.9, shininess:110, specular:0xffffff });
+  }
+  return { matTyre, matRim };
+}
+const matStripe = new THREE.MeshBasicMaterial({ color:0xF2F2F0, side:THREE.DoubleSide });
+
+/* White racing stripe on each tyre's outboard sidewall. The four tyres share
+   one mesh, so split its vertices into quadrants (±X, front/rear Z) and
+   measure each wheel's centre, radius and outer face rather than hardcoding —
+   same measure-don't-guess approach the flank decals use. */
+function makeTyreStripes(model){
+  const g = new THREE.Group();
+  let tyres = null;
+  model.traverse(o => { if (o.isMesh && o.name === TYRE_MESH) tyres = o; });
+  if (!tyres) return g;
+  model.updateMatrixWorld(true);
+  const pos = tyres.geometry.attributes.position;
+  const v = new THREE.Vector3();
+  // quadrant key → running bounds
+  const q = {};
+  for (let i = 0; i < pos.count; i++){
+    v.fromBufferAttribute(pos, i).applyMatrix4(tyres.matrixWorld);
+    const k = (v.x >= 0 ? 'R' : 'L') + (v.z >= 0 ? 'F' : 'B');
+    const c = q[k] || (q[k] = { minX:1e9, maxX:-1e9, minY:1e9, maxY:-1e9, minZ:1e9, maxZ:-1e9 });
+    if (v.x < c.minX) c.minX = v.x;  if (v.x > c.maxX) c.maxX = v.x;
+    if (v.y < c.minY) c.minY = v.y;  if (v.y > c.maxY) c.maxY = v.y;
+    if (v.z < c.minZ) c.minZ = v.z;  if (v.z > c.maxZ) c.maxZ = v.z;
+  }
+  for (const k of Object.keys(q)){
+    const c = q[k];
+    const r = (c.maxY - c.minY) / 2;
+    if (!(r > 0.05)) continue;                       // not a wheel-shaped cluster
+    const cy = (c.minY + c.maxY) / 2, cz = (c.minZ + c.maxZ) / 2;
+    const right = k[0] === 'R';
+    const faceX = right ? c.maxX : c.minX;           // outboard sidewall
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.60, r * 0.72, 32), matStripe);
+    ring.position.set(faceX + (right ? 0.006 : -0.006), cy, cz);
+    ring.rotation.y = right ? Math.PI / 2 : -Math.PI / 2;
+    g.add(ring);
   }
   return g;
 }
 
 const _tc = new THREE.Color();
-function buildGlbCar(tint, plateText){
+function buildGlbCar(tint){
   const wrap = new THREE.Group();
   const model = CAR.template.clone(true);
   const gradient = (tint === KASI_GREEN);       // KASI car → full length gradient
-  if (gradient) model.updateMatrixWorld(true);  // world matrices for the Z lookup
+  const { matTyre, matRim } = wheelMaterials();
+  model.updateMatrixWorld(true);                // world matrices for Z lookup + stripes
   model.traverse(o => {
     if (!o.isMesh) return;
+    if (o.name === TYRE_MESH) {                 // black rubber, never the livery
+      o.material = matTyre; o.material.side = THREE.FrontSide; return;
+    }
+    if (RIM_MESHES.indexOf(o.name) !== -1) {    // chrome hubs
+      o.material = matRim; o.material.side = THREE.FrontSide; return;
+    }
     if (gradient) {
       applyLengthGradient(o);
       o.material = matFlat(0xffffff); o.material.vertexColors = true;
@@ -1494,14 +1666,14 @@ function buildGlbCar(tint, plateText){
     o.material.side = THREE.DoubleSide;
   });
   wrap.add(model);
-  if (gradient) wrap.add(makeCarLogos());       // KASI decal on the sidepods
-  if (plateText) wrap.add(makeKasiPlate(plateText));
+  wrap.add(makeTyreStripes(model));             // white sidewall stripe, all cars
+  if (gradient) wrap.add(makeCarLogos(model));  // KASI decals projected onto the bodywork
   return wrap;
 }
 
 function attachGlb(entry){
   entry.body.remove(entry.procGroup);
-  entry.body.add(buildGlbCar(entry.tint, entry.plate));
+  entry.body.add(buildGlbCar(entry.tint));
 }
 
 // embedded data-URI (car_model.js) first so it works over file://; path fallback
@@ -1526,7 +1698,7 @@ new THREE.GLTFLoader().load(CAR_SRC, (gltf) => {
   } catch (e) { console.error('F1 GLB attach failed; keeping procedural car', e); }
 }, undefined, (err) => { console.error('F1 GLB failed to load; keeping procedural car', err); });
 
-function makeRallyCar(primary, accent, plateText){
+function makeRallyCar(primary, accent){
   const body = new THREE.Group();
   const g = new THREE.Group();          // procedural placeholder, swapped for the GLB
   const mesh = (geo, colr, x,y,z) => {
@@ -1553,24 +1725,6 @@ function makeRallyCar(primary, accent, plateText){
   mesh(new THREE.BoxGeometry(1.65,0.10,0.55), PAL.ink, 0, 1.28, -2.05);
   mesh(new THREE.BoxGeometry(0.09,0.42,0.5), PAL.deep,  0.82, 1.05, -2.05); // endplates
   mesh(new THREE.BoxGeometry(0.09,0.42,0.5), PAL.deep, -0.82, 1.05, -2.05);
-  // license plate on the back of the rear wing
-  if (plateText) {
-    const cv = document.createElement('canvas');
-    cv.width = 256; cv.height = 96;
-    const cx = cv.getContext('2d');
-    cx.fillStyle = '#F3E9CF'; cx.fillRect(0,0,256,96);
-    cx.strokeStyle = '#3A2E22'; cx.lineWidth = 10; cx.strokeRect(0,0,256,96);
-    cx.fillStyle = '#3A2E22';
-    cx.font = 'bold 62px "Arial Black", Arial, sans-serif';
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText(plateText, 128, 52);
-    const tex = new THREE.CanvasTexture(cv);
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.95,0.34),
-      new THREE.MeshBasicMaterial({ map:tex }));
-    plate.position.set(0, 1.28, -2.34);   // rear face of the wing
-    plate.rotation.y = Math.PI;           // face backwards
-    g.add(plate);
-  }
   // exposed open wheels: fat slicks, front pair steers
   const wheelGeo = new THREE.CylinderGeometry(0.5,0.5,0.55,10);
   wheelGeo.rotateZ(Math.PI/2);
@@ -1582,7 +1736,7 @@ function makeRallyCar(primary, accent, plateText){
     if (sz > 0) frontWheels.push(w);
   }
   body.add(g);
-  const entry = { body, procGroup:g, tint:primary, plate:plateText };
+  const entry = { body, procGroup:g, tint:primary };
   if (CAR.template) attachGlb(entry); else pendingCars.push(entry);
   return { body, wheels, frontWheels };
 }
@@ -1590,7 +1744,7 @@ function makeRallyCar(primary, accent, plateText){
 const Car = (() => {
   const group = new THREE.Group();
 
-  const { body:proc, wheels, frontWheels } = makeRallyCar(KASI_GREEN, KASI_GREEN, 'KASI');
+  const { body:proc, wheels, frontWheels } = makeRallyCar(KASI_GREEN, KASI_GREEN);
   group.add(proc);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.5,14),
@@ -1780,7 +1934,7 @@ const AI = (() => {
   const cars = [];
   const shadowGeo = new THREE.CircleGeometry(2.5, 14);
   for (let i = 0; i < COUNT; i++) {
-    const { body, wheels } = makeRallyCar(LIVERIES[i][0], LIVERIES[i][1], null);
+    const { body, wheels } = makeRallyCar(LIVERIES[i][0], LIVERIES[i][1]);
     const shadow = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial(
       { color:PAL.ink, transparent:true, opacity:0.16 }));
     shadow.rotation.x = -Math.PI/2;
@@ -1927,7 +2081,7 @@ const Hero = (() => {
   hScene.add(hSun);
 
   // same procedural KASI car the player drives
-  const { body:car } = makeRallyCar(KASI_GREEN, KASI_GREEN, 'KASI');
+  const { body:car } = makeRallyCar(KASI_GREEN, KASI_GREEN);
   hScene.add(car);
   // faint ground shadow blob (matches the game's shadow disc)
   const hShadow = new THREE.Mesh(new THREE.CircleGeometry(2.5,14),
@@ -2027,6 +2181,7 @@ const Hero = (() => {
 
   // DOM the timeline drives
   const heroTitle = document.getElementById('heroTitle');
+  const heroTag = heroTitle && heroTitle.querySelector('.tag');
   const railFill = document.getElementById('railFill');
   const railPct  = document.getElementById('railPct');
   const chargeRail = document.getElementById('chargeRail');
@@ -2037,6 +2192,53 @@ const Hero = (() => {
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const scrollMax = () => Math.max(1, document.documentElement.scrollHeight - innerHeight);
+
+  /* --- the wordmark's flight: hero centre → section 01's title slot ---------
+     A FLIP-style handoff. The hero logo lives in the fixed #landing layer, so
+     it can be transformed onto any viewport rect; ch1Logo is the real in-flow
+     <img> that owns the slot. Each frame we drive the hero logo onto ch1Logo's
+     CURRENT rect — which moves with the scroller, so the mark tracks section 01
+     naturally instead of needing a separate exit animation. At the end of the
+     flight the two coincide exactly, so swapping which one is visible is
+     invisible, and from then on the in-flow image scrolls away on its own.
+     Section 01's top edge lands at p ~= 0.148, hence the 0.02 -> 0.16 window. */
+  const heroLogo = document.querySelector('#heroTitle .kasi');
+  const ch1Logo  = document.getElementById('ch1Logo');
+  const DOCK_A = 0.02, DOCK_B = 0.16;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let restRect = null;                 // hero logo's untransformed viewport rect
+  function measureRest(){
+    if (!heroLogo) return;
+    const prev = heroLogo.style.transform;
+    heroLogo.style.transform = '';     // measure the CSS resting pose, not our own output
+    restRect = heroLogo.getBoundingClientRect();
+    heroLogo.style.transform = prev;
+  }
+  function dockHeroLogo(pv){
+    if (!heroLogo || !ch1Logo) return;
+    const e = reduceMotion ? (pv > DOCK_A ? 1 : 0)
+                           : smoothstep(clamp01((pv - DOCK_A) / (DOCK_B - DOCK_A)));
+    if (e >= 1) {                      // landed: hand over to the real element
+      heroLogo.style.opacity = '0';
+      ch1Logo.style.visibility = '';
+      return;
+    }
+    if (!restRect || !restRect.width) measureRest();
+    if (!restRect || !restRect.width) return;
+    ch1Logo.style.visibility = 'hidden';   // still holds layout space, so nothing reflows
+    heroLogo.style.opacity = '1';
+    const to = ch1Logo.getBoundingClientRect();
+    if (!to.width) return;
+    const dx = (to.left - restRect.left) * e;
+    const dy = (to.top  - restRect.top ) * e;
+    const s  = 1 + (to.width / restRect.width - 1) * e;
+    // the -50% keeps the CSS centring rule (left:50%) intact at rest
+    heroLogo.style.transformOrigin = 'top left';
+    heroLogo.style.transform =
+      'translate(calc(-50% + ' + dx.toFixed(2) + 'px), ' + dy.toFixed(2) + 'px) scale(' + s.toFixed(4) + ')';
+  }
+  addEventListener('load', measureRest);
+  if (heroLogo) heroLogo.addEventListener('load', measureRest);
 
   /* --- scroll: set the TARGET progress; frame() eases p toward it so the
      twist stays buttery regardless of wheel-notch granularity --- */
@@ -2072,6 +2274,7 @@ const Hero = (() => {
   canvas.addEventListener('pointercancel', onUp);
 
   addEventListener('resize', heroViewport);
+  addEventListener('resize', measureRest);   // logo is vw-sized, so its rest pose moves
 
   /* =====================================================================
      ASCII "revealer flashlight" post-effect (desktop hover only).
@@ -2256,7 +2459,11 @@ const Hero = (() => {
     const pct = Math.round(p * 100);
     chargeRail.style.setProperty('--charge', pct + '%');
     railPct.textContent = pct + '%';
-    if (heroTitle) heroTitle.style.opacity = String(clamp01(1 - p * 5));
+    // The tagline still fades; the wordmark instead flies down into ch1.
+    // Faster than the old 1-p*5 so it clears before ch1 centres — otherwise it
+    // sits on top of that chapter's lede while the logo is landing.
+    if (heroTag) heroTag.style.opacity = String(clamp01(1 - p * 12));
+    dockHeroLogo(p);
 
     renderHero();
   }
@@ -2351,26 +2558,24 @@ const Hero = (() => {
     return [(n>>16)&255, (n>>8)&255, n&255]; };
   const lum = h => { const [r,g,b] = hexRgb(h);
     return (0.2126*r + 0.7152*g + 0.0722*b) / 255; };
-  // each scheme: token colours + paper(light text) + ink(dark text) + stops map
+  /* Two schemes only: index 0 = light (Turquoise), 1 = dark (Jewel).
+     Each: token colours + paper(light text) + ink(dark text) + stops map. */
   const SCHEMES = [
-    { name:'Savanna', cream:'#F4ECD6', ink:'#241E44', paper:'#F6EFDA', orange:'#B168C4',
-      yellow:'#E6B84F', blue:'#33B4D1', green:'#8FC978', sand:'#E5D6A2',
-      stops:{ white:'#F4ECD6', cream:'#EBDFB8', ink:'#241E44', orange:'#B168C4', blue:'#33B4D1', gold:'#E7D3A0' } },
-    { name:'Jewel', cream:'#20264F', ink:'#161C40', paper:'#EAF2F6', orange:'#33B4D1',
-      yellow:'#E6B84F', blue:'#8A5CD0', green:'#8FC978', sand:'#151A3B',
-      stops:{ white:'#20264F', cream:'#182046', ink:'#0F1436', orange:'#33B4D1', blue:'#8A5CD0', gold:'#2A3266' } },
     { name:'Turquoise', cream:'#EAF5F5', ink:'#123A4A', paper:'#F2FAFA', orange:'#2AA9C9',
       yellow:'#E6C25A', blue:'#7A5CC8', green:'#8FC978', sand:'#CFE7E6',
       stops:{ white:'#EAF5F5', cream:'#D6ECEC', ink:'#123A4A', orange:'#2AA9C9', blue:'#7A5CC8', gold:'#E7D3A0' } },
-    { name:'Lilac', cream:'#F4ECF4', ink:'#3A1E4A', paper:'#FAF2FA', orange:'#C05CC4',
-      yellow:'#E6B84F', blue:'#33B4D1', green:'#8FC978', sand:'#E7D2E6',
-      stops:{ white:'#F4ECF4', cream:'#EBD9EB', ink:'#3A1E4A', orange:'#C05CC4', blue:'#33B4D1', gold:'#E7D3A0' } },
-    { name:'Roller', cream:'#F2E9CE', ink:'#1E2352', paper:'#F6EFDA', orange:'#7A3FD0',
-      yellow:'#F2C43D', blue:'#1FA6CE', green:'#5FB86B', sand:'#DFC98C',
-      stops:{ white:'#F2E9CE', cream:'#E4D2A0', ink:'#1E2352', orange:'#7A3FD0', blue:'#1FA6CE', gold:'#D2B25C' } },
+    { name:'Jewel', cream:'#20264F', ink:'#161C40', paper:'#EAF2F6', orange:'#33B4D1',
+      yellow:'#E6B84F', blue:'#8A5CD0', green:'#8FC978', sand:'#151A3B',
+      stops:{ white:'#20264F', cream:'#182046', ink:'#0F1436', orange:'#33B4D1', blue:'#8A5CD0', gold:'#2A3266' } },
   ];
-  let curScheme = Math.max(0, Math.min(SCHEMES.length-1,
-    parseInt(localStorage.getItem('kasiScheme'), 10) || 0));
+  const LIGHT = 0, DARK = 1;
+  // stored preference wins; otherwise follow the OS
+  let curScheme = LIGHT;
+  try {
+    const saved = localStorage.getItem('kasiTheme');
+    if (saved === 'dark') curScheme = DARK;
+    else if (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) curScheme = DARK;
+  } catch (e) {}
 
   function setThemeFg(name){                 // pick light/dark text from bg luminance
     const S = SCHEMES[curScheme];
@@ -2385,22 +2590,17 @@ const Hero = (() => {
     curScheme = i; const S = SCHEMES[i];
     for (const t of ['cream','ink','orange','yellow','blue','green','sand','paper'])
       root.style.setProperty('--' + t, S[t]);
-    root.style.setProperty('--ink-rgb', hexRgb(S.ink).join(','));
-    root.style.setProperty('--paper-rgb', hexRgb(S.paper).join(','));
     if (typeof Hero !== 'undefined' && Hero.setStops) Hero.setStops(S.stops);
+    if (typeof setCarEnv === 'function') setCarEnv(S);   // chrome reflects the active theme
     setThemeFg(document.body.dataset.theme || 'white');
-    [...picker.children].forEach((b, k) => b.classList.toggle('sel', k === i));
-    try { localStorage.setItem('kasiScheme', i); } catch (e) {}
+    const dark = (i === DARK);
+    themeBtn.classList.toggle('dark', dark);
+    themeBtn.setAttribute('aria-pressed', String(dark));
+    try { localStorage.setItem('kasiTheme', dark ? 'dark' : 'light'); } catch (e) {}
   }
 
-  const picker = $('#palettePicker');
-  SCHEMES.forEach((S, i) => {
-    const b = document.createElement('button');
-    b.className = 'pswatch'; b.style.background = S.orange;
-    b.title = S.name; b.setAttribute('aria-label', S.name + ' scheme');
-    b.addEventListener('click', () => applyScheme(i));
-    picker.appendChild(b);
-  });
+  const themeBtn = $('#themeToggle');
+  themeBtn.addEventListener('click', () => applyScheme(curScheme === DARK ? LIGHT : DARK));
 
   /* --- section theming: swap DOM palette as each block hits mid-screen --- */
   const themeIO = new IntersectionObserver((entries) => {
@@ -2488,6 +2688,7 @@ const Hero = (() => {
   }
   st.addEventListener('click', () => {
     on = !on; st.classList.toggle('on', on);
+    st.setAttribute('aria-pressed', String(on));
     if (on) ambStart(); else ambStop();
   });
   // duck ambience once the race ignites so it doesn't fight the engine

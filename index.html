@@ -10,8 +10,26 @@
 <style>
   /* ============ GLOBAL / RESET ============ */
   :root{
-    /* colour tokens — VALUES are swapped at runtime by the palette switcher
-       (applyScheme). Names stay fixed so every var(--token) usage recolours. */
+    /* ---- FOUR STOPS: the roller palette ----------------------------------
+       The world is ONE colour (--ground). The only chroma on the page is a
+       four-stop gradient the scroll walks through, ordered by LUMINANCE so
+       the page literally brightens as the pack charges:
+         #965138 L.127 earth  →  #8A4D93 L.128 chemistry
+         #73A059 L.295 efficiency  →  #49CCDE L.499 current
+       Sourced from the lilac-breasted roller (see Brand Breakdown Doc_1.pdf).
+       ★ s1→s2 is 1.01:1 in luminance — a pure hue shift. That boundary
+         (p=0.34) is carried by the rail % and the 12→96 cell count, not
+         by colour. Do not move another stop onto an unsignalled beat. */
+    --s1:#965138; --s2:#8A4D93; --s3:#73A059; --s4:#49CCDE;
+    --ground:#0B0332;
+    /* live accent — JS drives this from stopAt(p) every frame */
+    --accent:#965138;
+    /* ---- GAME chrome tokens ----------------------------------------------
+       The rally world still runs on its own desert palette (see PAL), and
+       its HUD and screens were designed against it. These are deliberately
+       LEFT ALONE by the story palette above: repainting them would drag the
+       game into a scheme its 3D world does not share. Landing surfaces use
+       --ground / --accent / --fg instead. */
     --cream:#F3E9CF; --ink:#3A2E22; --orange:#E8542F;
     --yellow:#F2C43D; --blue:#4E9FCE; --sand:#C9BE7E;
     --green:#6FBF73; --paper:#F3E9CF;
@@ -19,10 +37,10 @@
     --font-body:'Archivo','Helvetica Neue',Arial,sans-serif;
     --font-mono:'IBM Plex Mono','Courier New',monospace;
     /* live theme tokens — JS sets these per active section (setThemeFg) */
-    --fg:#3A2E22; --fg-soft:rgba(58,46,34,.62); --hair:rgba(58,46,34,.18);
+    --fg:#FFFFFF; --fg-soft:rgba(255,255,255,.62); --hair:rgba(255,255,255,.18);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{width:100%;height:100%;background:var(--sand);
+  html,body{width:100%;height:100%;background:var(--ground);
     font-family:'Arial Black','Helvetica Neue',Arial,sans-serif;user-select:none;}
   /* body is the scroll container: landing on top, game fixed behind */
   body{overflow-x:hidden;overflow-y:scroll;}
@@ -40,7 +58,7 @@
   #heroCanvas{position:absolute;inset:0;touch-action:pan-y;cursor:grab;}
   #heroCanvas.grabbing{cursor:grabbing;}
   #scrollHint{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);
-    z-index:2;font-size:12px;letter-spacing:6px;color:var(--ink);opacity:.7;
+    z-index:2;font-size:12px;letter-spacing:6px;color:var(--fg);opacity:.7;
     pointer-events:none;text-align:center;animation:hintBob 1.8s ease-in-out infinite;}
   #scrollHint .arrow{display:block;font-size:22px;margin-top:8px;}
   @keyframes hintBob{0%,100%{transform:translateX(-50%) translateY(0);}
@@ -69,11 +87,23 @@
      works through the gaps */
   #story{position:relative;z-index:16;pointer-events:none;}
   #story a,#story button{pointer-events:auto;}
-  .chapter{min-height:100vh;display:flex;position:relative;
+  /* ---- chapter heights set the scroll clock ----------------------------
+     p is scrollY/(scrollHeight−innerHeight), so these numbers ARE the story's
+     timing: they decide which copy is at mid-screen when each camera keyframe
+     lands. The ladder grew from six chapters to eight (the pack and the merge
+     are new), so every block is shorter than it was — total is 840vh against
+     the old 796vh, i.e. the page did not get meaningfully longer.
+
+     Mid-screen crossings this produces (measured, not estimated):
+       ch1 .120  ch2 .264  ch3 .408  ch4 .544  ch5 .681  ch6 .833  ch7 .986
+     ★ Retune KEYS and these together or the copy will describe an object
+       the camera has already left. */
+  .chapter{min-height:95vh;display:flex;position:relative;
     padding:14vh clamp(24px,7vw,120px);color:var(--fg);
     transition:color .5s ease;}
-  .chapter.tall{min-height:132vh;}
-  .chapter.final{min-height:180vh;align-items:flex-end;padding-bottom:22vh;}
+  .chapter.runway{min-height:90vh;}
+  .chapter.tall{min-height:105vh;}
+  .chapter.final{min-height:120vh;align-items:flex-end;padding-bottom:18vh;}
   .chapter[data-align="left"]{justify-content:flex-start;align-items:center;}
   .chapter[data-align="right"]{justify-content:flex-end;align-items:center;text-align:right;}
   .chapter[data-align="center"]{justify-content:center;align-items:center;text-align:center;}
@@ -94,8 +124,8 @@
     text-transform:uppercase;margin:0;}
   .outline{-webkit-text-stroke:1.6px var(--fg);color:transparent;
     text-stroke:1.6px var(--fg);}
-  .accent{color:var(--orange);}
-  body[data-theme="orange"] .accent{color:var(--ink);}
+  /* accent words track the live stop, so the copy charges with the object */
+  .accent{color:var(--accent);}
   .lede{font-family:var(--font-body);font-weight:400;
     font-size:clamp(16px,1.7vw,21px);line-height:1.5;color:var(--fg-soft);
     margin-top:26px;max-width:46ch;}
@@ -124,6 +154,13 @@
     transition-delay:calc(var(--i,0)*90ms);}
   .mask.in>span,.in .mask>span{transform:none;}
 
+  /* ---- model credits (CC BY 4.0 requires visible attribution) ---- */
+  .credits{font-family:var(--font-mono);font-size:11px;line-height:1.9;
+    letter-spacing:.5px;color:var(--fg-soft);margin-top:38px;max-width:52ch;}
+  .credits a{color:var(--fg-soft);text-decoration:underline;
+    text-underline-offset:3px;transition:color .25s;}
+  .credits a:hover{color:var(--accent);}
+
   /* ---- battery-stat grid (chapter 2 & 3) ---- */
   /* capped independently of .wrap so the stat columns keep their tight measure */
   .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);
@@ -148,7 +185,7 @@
     font-family:var(--font-display);font-weight:800;font-size:clamp(22px,3.4vw,40px);
     text-transform:uppercase;letter-spacing:.01em;}
   .tick-inner span{padding:0 28px;display:inline-flex;align-items:center;gap:28px;}
-  .tick-inner span::after{content:"◆";color:var(--orange);font-size:.5em;}
+  .tick-inner span::after{content:"◆";color:var(--accent);font-size:.5em;}
   @keyframes marquee{to{transform:translateX(-50%);}}
 
   /* ---- brand wordmark on the arrival screen (inside #landing) ----
@@ -163,18 +200,25 @@
     max-width:min(340px,72vw);text-align:left;
     font-family:var(--font-mono);font-weight:500;
     font-size:clamp(11px,1.3vw,15px);letter-spacing:6px;text-transform:uppercase;
-    color:var(--ink);opacity:.7;line-height:1.9;}
-  #heroTitle .tag b{color:var(--orange);font-weight:600;}
+    color:var(--fg);opacity:.7;line-height:1.9;}
+  #heroTitle .tag b{color:var(--accent);font-weight:600;}
 
   /* ---- charge rail: vertical battery progress (from #battBar DNA) ---- */
-  #chargeRail{position:fixed;top:50%;right:26px;transform:translateY(-50%);
+  #chargeRail{--railLen:min(46vh,380px);
+    position:fixed;top:50%;right:26px;transform:translateY(-50%);
     z-index:25;display:flex;flex-direction:column;align-items:center;gap:12px;
     transition:opacity .4s ease;}
-  #railTrack{position:relative;width:6px;height:min(46vh,380px);
+  #railTrack{position:relative;width:6px;height:var(--railLen);
     background:var(--hair);border-radius:4px;overflow:hidden;}
+  /* The rail IS the four-stop gradient, revealed as it fills — not a bar with
+     a number on it. Sizing the background to the FULL track length (rather
+     than letting it default to the fill box) stops the ramp compressing as
+     the fill grows, so a given colour always sits at a fixed height. */
   #railFill{position:absolute;left:0;bottom:0;width:100%;height:var(--charge,0%);
-    background:linear-gradient(to top,var(--green),var(--yellow) 55%,var(--orange));
-    border-radius:4px;}
+    background-image:linear-gradient(to top,var(--s1) 0%,var(--s2) 34%,
+      var(--s3) 50%,var(--s4) 72%);
+    background-size:100% var(--railLen);background-position:left bottom;
+    background-repeat:no-repeat;border-radius:4px;}
   #railPct{font-family:var(--font-mono);font-weight:600;font-size:12px;
     letter-spacing:1px;color:var(--fg);font-variant-numeric:tabular-nums;
     writing-mode:vertical-rl;transform:rotate(180deg);}
@@ -207,6 +251,12 @@
   #themeToggle .moon{display:none;}
   #themeToggle.dark .moon{display:block;}
   #themeToggle.dark .sun{display:none;}
+  /* ★ LIGHT MODE IS WITHDRAWN, not deleted. Strong Cyan (#49CCDE) sits at
+     1.74:1 on a light ground — below even the 3:1 non-text bar — and the
+     story's payoff is a cyan car at ignition. A light mode needs darkened
+     variants of s3/s4, i.e. a second palette to design and maintain. The
+     button and its handler are left intact so restoring it is one line. */
+  #themeToggle{display:none;}
 
   /* ---- grain overlay ---- */
   #grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.045;
@@ -214,18 +264,24 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
 
   /* ---- preloader ---- */
-  #preloader{position:fixed;inset:0;z-index:100;background:var(--cream);
+  /* the mark charges bottom-up through the four stops, so the loader is the
+     first statement of the rule the whole page runs on */
+  #preloader{position:fixed;inset:0;z-index:100;background:var(--ground);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
     transition:opacity .7s ease,visibility .7s ease;}
   #preloader.done{opacity:0;visibility:hidden;}
   #preloader .mark{font-family:var(--font-display);font-weight:900;
-    font-size:clamp(56px,13vw,150px);letter-spacing:-.03em;color:var(--ink);
+    font-size:clamp(56px,13vw,150px);letter-spacing:-.03em;
+    color:rgba(255,255,255,.14);
     position:relative;overflow:hidden;line-height:1;}
-  #preloader .mark .fill{position:absolute;inset:0;color:var(--orange);
+  #preloader .mark .fill{position:absolute;inset:0;
+    background-image:linear-gradient(to top,var(--s1) 0%,var(--s2) 34%,
+      var(--s3) 50%,var(--s4) 72%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
     clip-path:inset(100% 0 0 0);transition:clip-path .2s linear;}
-  #preloader .pbar{width:min(240px,60vw);height:3px;background:rgba(58,46,34,.15);
+  #preloader .pbar{width:min(240px,60vw);height:3px;background:rgba(255,255,255,.15);
     border-radius:2px;overflow:hidden;}
-  #preloader .pbar i{display:block;height:100%;width:0%;background:var(--ink);}
+  #preloader .pbar i{display:block;height:100%;width:0%;background:var(--s4);}
   #preloader .plabel{font-family:var(--font-mono);font-size:10px;letter-spacing:4px;
     text-transform:uppercase;color:var(--fg-soft);}
 
@@ -241,16 +297,20 @@
   }
   @media (max-width:720px){
     .chapter{padding:12vh 26px;justify-content:flex-start !important;
-      align-items:flex-end !important;text-align:left !important;min-height:100vh;}
-    .chapter.tall{min-height:118vh;}
+      align-items:flex-end !important;text-align:left !important;min-height:95vh;}
+    .chapter.runway{min-height:90vh;}
+    .chapter.tall{min-height:105vh;}
     .wrap{max-width:100%;}
     .lede{font-size:16px;}
     .stats-grid{gap:24px 28px;}
     #chargeRail{top:auto;bottom:16px;right:16px;left:16px;flex-direction:row-reverse;
       transform:none;gap:10px;align-items:center;}
     #railTrack{width:100%;height:6px;}
+    /* portrait: the track is fluid-width, so there is no fixed length to size
+       a non-compressing gradient against. Fall back to the LIVE stop — still
+       the same value the tinted subject is using, just not the whole ramp. */
     #railFill{left:0;bottom:0;width:var(--charge,0%);height:100%;
-      background:linear-gradient(to right,var(--green),var(--yellow) 55%,var(--orange));}
+      background-image:none;background-color:var(--accent);}
     #railPct{writing-mode:horizontal-tb;transform:none;}
     #railTicks,#railLabel{display:none;}
     #heroTitle{justify-content:flex-end;padding-bottom:16vh;}
@@ -322,12 +382,20 @@
   /* ============ SCREENS ============ */
   .screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;color:var(--ink);}
-  #bestLine{font-size:12px;letter-spacing:3px;color:var(--orange);min-height:16px;}
+  #bestLine{font-size:12px;letter-spacing:3px;color:var(--accent);min-height:16px;}
   .btn{pointer-events:auto;cursor:pointer;border:none;background:var(--ink);color:var(--cream);
     font-family:inherit;font-size:18px;letter-spacing:6px;padding:16px 54px;border-radius:2px;}
   .btn:hover{background:var(--orange);}
   .btn.ghost{background:transparent;color:var(--ink);border:3px solid var(--ink);padding:13px 40px;}
   .btn.ghost:hover{border-color:var(--orange);color:var(--orange);background:transparent;}
+  /* START ENGINE lives on the dark story stage, not over the game, so it
+     takes the story palette. At p=1 --accent is Strong Cyan — the button is
+     literally the fully-charged colour, which is the point of the page. */
+  /* ★ No transition on background here. --accent is rewritten from the scroll
+     on every frame it changes, so a 300 ms ease would permanently lag the
+     scroll instead of smoothing it — the value is already continuous. */
+  #startWrap .btn{background:var(--accent);color:var(--ground);}
+  #startWrap .btn:hover{background:var(--paper);}
 
   #countdown{display:none;background:transparent;pointer-events:none;}
   #countNum{font-size:clamp(90px,18vw,200px);color:var(--ink);
@@ -449,8 +517,9 @@
 <!-- ============ BRAND STORY (scrolls over the live car) ============ -->
 <main id="story">
 
-  <!-- CH0 — arrival (giant wordmark lives in #heroTitle above) -->
-  <section class="chapter" id="ch0" data-theme="white" data-align="center"></section>
+  <!-- CH0 — arrival. Deliberately empty: one viewport of runway so the single
+       cell can hold the frame on its own before any copy competes with it. -->
+  <section class="chapter runway" id="ch0" data-theme="white" data-align="center"></section>
 
   <!-- CH1 — the name -->
   <section class="chapter" id="ch1" data-theme="cream" data-align="left">
@@ -473,13 +542,13 @@
     </div>
   </div>
 
-  <!-- CH2 — the battery (SIGNATURE: pack dives out & explodes) -->
+  <!-- CH2 — the module: the first grid, 12 cells -->
   <section class="chapter tall" id="ch2" data-theme="ink" data-align="left">
     <div class="wrap">
       <h2 class="h-big rv"><span class="mask"><span>Chemistry,</span></span>
         <span class="mask"><span class="accent">continental.</span></span></h2>
-      <p class="lede rv" style="--i:1">A prismatic pack engineered cell-up for African heat, dust and
-        distance — not adapted from somewhere colder. Watch it come apart.</p>
+      <p class="lede rv" style="--i:1">Engineered cell-up for African heat, dust and distance —
+        not adapted from somewhere colder. Twelve of them make a module. Keep scrolling.</p>
       <div class="stats-grid">
         <div class="kstat rv" style="--i:1">
           <div class="num"><span data-count="412">0</span><span class="suf">Wh/kg</span></div>
@@ -497,8 +566,37 @@
     </div>
   </section>
 
-  <!-- CH3 — data / telemetry ethos -->
-  <section class="chapter tall" id="ch3" data-theme="orange" data-align="right">
+  <!-- CH3 — THE PACK: the module becomes 96 cells (new) -->
+  <section class="chapter tall" id="ch3" data-theme="ink" data-align="right">
+    <div class="wrap">
+      <h2 class="h-big rv"><span class="mask"><span>Ninety-six</span></span>
+        <span class="mask"><span class="accent">of the same.</span></span></h2>
+      <p class="lede rv" style="--i:1">A pack is not a clever cell. It is an <b>ordinary cell, made
+        identically, ninety-six times</b> — then again tomorrow. Consistency is the product;
+        the chemistry is just how we get there.</p>
+      <div class="stats-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="kstat rv" style="--i:2">
+          <div class="num"><span data-count="96">0</span></div>
+          <div class="cap">Cells per pack</div></div>
+        <div class="kstat rv" style="--i:3">
+          <div class="num"><span data-count="2">0</span><span class="suf">% spread</span></div>
+          <div class="cap">Cell-to-cell capacity</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CH4 — THE MERGE: the car closes over the pack (new) -->
+  <section class="chapter" id="ch4" data-theme="ink" data-align="right">
+    <div class="wrap">
+      <h2 class="h-big rv"><span class="mask"><span>Then the car</span></span>
+        <span class="mask"><span class="accent">happens.</span></span></h2>
+      <p class="lede rv" style="--i:1">Everything above this line is the car. The bodywork is
+        what we wrapped around it — <b>the battery came first</b>, and it is still in there.</p>
+    </div>
+  </section>
+
+  <!-- CH5 — data / telemetry ethos -->
+  <section class="chapter tall" id="ch5" data-theme="orange" data-align="right">
     <div class="wrap">
       <h2 class="h-big rv"><span class="mask"><span>Every lap</span></span>
         <span class="mask"><span>is telemetry.</span></span></h2>
@@ -524,8 +622,8 @@
     </div>
   </div>
 
-  <!-- CH4 — heritage / Nakuru -->
-  <section class="chapter tall" id="ch4" data-theme="blue" data-align="left">
+  <!-- CH6 — heritage / Nakuru -->
+  <section class="chapter tall" id="ch6" data-theme="blue" data-align="left">
     <div class="wrap">
       <h2 class="h-big rv"><span class="mask"><span>Langa Langa,</span></span>
         <span class="mask"><span>Nakuru.</span></span></h2>
@@ -536,13 +634,23 @@
     </div>
   </section>
 
-  <!-- CH5 — ethos + finale (START ENGINE lives in #landing overlay) -->
-  <section class="chapter final" id="ch5" data-theme="white" data-align="left">
+  <!-- CH7 — ethos + finale (START ENGINE lives in #landing overlay) -->
+  <section class="chapter final" id="ch7" data-theme="white" data-align="left">
     <div class="wrap">
       <h2 class="h-giant rv"><span class="mask"><span>Half studio.</span></span>
         <span class="mask"><span class="accent">Half lab.</span></span></h2>
       <p class="lede rv" style="--i:1">KASI is where the draughtsman and the electrochemist share a bench.
         You've read the spec — now feel it. <b>Full charge. Prove it on the circuit.</b></p>
+      <!-- Both models are CC-BY-4.0, which requires visible credit. -->
+      <p class="credits rv" style="--i:2">
+        3D models —
+        <a href="https://sketchfab.com/3d-models/formula-1-car-e89589184eac42c08028db5cba3f6499"
+           target="_blank" rel="noopener">Formula 1 Car</a> by Steven Samuel and
+        <a href="https://sketchfab.com/3d-models/m200-auxiliary-fuel-cell-eac338a3b33e4c11b5f7c8c927ecd4ee"
+           target="_blank" rel="noopener">M200 Auxiliary Fuel Cell</a> by QuakeShambler,
+        both licensed <a href="http://creativecommons.org/licenses/by/4.0/"
+           target="_blank" rel="noopener">CC BY 4.0</a>.
+      </p>
     </div>
   </section>
 
@@ -619,6 +727,11 @@
 <!-- F1 car model embedded as a base64 data-URI so it loads with no network
      fetch (works when index.html is opened directly from disk / file://) -->
 <script src="car_model.js"></script>
+<!-- KASI cell, same treatment. It MUST be inlined like the car: a GLTFLoader
+     fetch of a real .glb is blocked under file://, so serving it by path made
+     the whole battery act silently invisible on a local open while the
+     (inlined) car still appeared. -->
+<script src="battery_model.js"></script>
 <!-- KASI logo (extracted from the SVG) as a data-URI: hero title + car decal -->
 <script src="kasi_logo.js"></script>
 <script>
@@ -1402,28 +1515,118 @@ const Track = (() => {
    stands in so nothing is ever empty.
    =================================================================== */
 const KASI_GREEN = 0x8FE04A;                       // KASI car marker (now gradient-coloured)
-const CAR = { template: null, box: null };
+// `seq` ticks every time a car's meshes are swapped for the GLB. Anything
+// caching a traversal of a car can compare against it instead of re-walking
+// the graph every frame to notice the swap.
+const CAR = { template: null, box: null, seq: 0 };
 const pendingCars = [];
 
-/* 4-colour length gradient for the KASI car, rear (t=0) → front tip (t=1):
-   purple-pink → light green → sky blue → dark blue */
-const GRAD = [
-  [0.00, new THREE.Color(0xBE6BE0)],   // rear — violet / purple-pink
-  [0.36, new THREE.Color(0x9BE86B)],   // light green
-  [0.70, new THREE.Color(0x5FC7F2)],   // sky blue
-  [1.00, new THREE.Color(0x16308A)],   // front tip — dark blue
-];
-const GRAD_FLIP = false;               // flip if the ends come out reversed
-function gradColor(t, out){
+/* Asset gate. The preloader holds at 90 % until BOTH GLBs have resolved, so
+   the page never opens on an empty stage. Failures call in too — a model that
+   404s should let the loader finish, not hang it at 90 forever. */
+const ASSETS = { need: 2, done: 0, ready: false };
+function assetDone(what){
+  if (++ASSETS.done >= ASSETS.need) ASSETS.ready = true;
+}
+
+/* =====================================================================
+   FOUR STOPS — the roller palette, and the one mixer the whole page shares.
+
+   The world is a single constant ground; the ONLY chroma anywhere is a
+   four-stop gradient. Two things read from it:
+     • stopAt(p)    — the scroll walks the stops in TIME  (cells, rail, accent)
+     • gradColor(t) — the car wears them in SPACE, along its length
+   Same four colours, once temporal and once spatial. The car is where all
+   four finally coexist, which is why it is the payoff.
+
+   Ordered by LUMINANCE (0.127 → 0.128 → 0.295 → 0.499) so the page
+   genuinely brightens as the pack charges. Any other ordering of these
+   five zigzags and "charge is colour depth" stops being true.
+
+   ★ Mixing happens in OKLCH, not sRGB. A straight sRGB lerp sends
+     grape→sage through #7F7776 — a dead grey — and that transition covers
+     the merge, the most important stretch of the page. Interpolating
+     lightness and chroma linearly while carrying hue around the wheel keeps
+     every intermediate colour saturated and perceptually even.
+
+   ★ Hue direction is set PER SEGMENT (HUE_LONG), not always "shortest".
+     Stop hues are 40° / 322° / 135° / 208°, so the shortest arc from grape
+     to sage runs 322°→40°→135°, i.e. straight through #b45850 red and
+     #a07424 gold — two loud colours that are not in the palette, arriving
+     in the middle of the pack chapter. The long way round (322°→208°→135°)
+     stays cool the whole time — violet, blue, teal, green — every step of
+     it adjacent to a colour the brand already owns. Segments 0 and 2 are
+     well served by the short arc and keep it.
+   ===================================================================== */
+const GROUND = '#0B0332';                        // Dark Amethyst — the world
+const STOP_HEX = ['#965138', '#8A4D93', '#73A059', '#49CCDE'];
+//                 earth      chemistry  efficiency current
+/* Scroll positions. 0.34 and 0.72 are the brand gradient's own stop spacing,
+   read off the shading object in Brand Breakdown Doc_1.pdf
+   (FunctionType 3, Bounds [0.0028387, 0.337733, 0.714698]). */
+const STOP_AT = [0.00, 0.34, 0.50, 0.72];
+
+const _srgbToLin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+const _linToSrgb = c => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+function rgbToOklch(c){                          // THREE.Color (sRGB) → [L, C, H rad]
+  const r = _srgbToLin(c.r), g = _srgbToLin(c.g), b = _srgbToLin(c.b);
+  const l = Math.cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b);
+  const m = Math.cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b);
+  const s = Math.cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b);
+  const L = 0.2104542553*l + 0.7936177850*m - 0.0040720468*s;
+  const A = 1.9779984951*l - 2.4285922050*m + 0.4505937099*s;
+  const B = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s;
+  return [L, Math.hypot(A, B), Math.atan2(B, A)];
+}
+function oklchToRgb(L, C, H, out){
+  const A = C * Math.cos(H), B = C * Math.sin(H);
+  const l3 = L + 0.3963377774*A + 0.2158037573*B;
+  const m3 = L - 0.1055613458*A - 0.0638541728*B;
+  const s3 = L - 0.0894841775*A - 1.2914855480*B;
+  const l = l3*l3*l3, m = m3*m3*m3, s = s3*s3*s3;
+  const cl = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  return out.setRGB(
+    cl(_linToSrgb( 4.0767416621*l - 3.3077115913*m + 0.2309699292*s)),
+    cl(_linToSrgb(-1.2684380046*l + 2.6097574011*m - 0.3413193965*s)),
+    cl(_linToSrgb(-0.0041960863*l - 0.7034186147*m + 1.7076147010*s)));
+}
+const _TAU = Math.PI * 2;
+// per-segment hue routing: false = shortest arc, true = the long way round
+const HUE_LONG = [false, true, false];
+function mixOklch(a, b, f, long, out){           // a,b: [L,C,H]
+  let dh = b[2] - a[2];
+  while (dh >  Math.PI) dh -= _TAU;
+  while (dh < -Math.PI) dh += _TAU;
+  if (long) dh = dh > 0 ? dh - _TAU : dh + _TAU;
+  return oklchToRgb(a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f, a[2] + dh*f, out);
+}
+
+const STOP_COL = STOP_HEX.map(h => new THREE.Color(h));
+const STOP_LCH = STOP_COL.map(rgbToOklch);
+const _stopOut = new THREE.Color();
+function rampAt(positions, t, out){
+  out = out || _stopOut;
   t = t < 0 ? 0 : t > 1 ? 1 : t;
-  for (let i = 0; i < GRAD.length - 1; i++){
-    if (t <= GRAD[i+1][0]){
-      const f = (t - GRAD[i][0]) / (GRAD[i+1][0] - GRAD[i][0]);
-      return out.copy(GRAD[i][1]).lerp(GRAD[i+1][1], f);
+  for (let i = 0; i < positions.length - 1; i++){
+    if (t <= positions[i+1]){
+      const span = positions[i+1] - positions[i];
+      const f = span ? (t - positions[i]) / span : 0;
+      // land the stops bit-exact: an OKLCH round trip drifts by ±1 per channel,
+      // which is invisible but makes "the tint at p=0.34 must be #8A4D93" fail
+      if (f <= 1e-6)     return out.copy(STOP_COL[i]);
+      if (f >= 1 - 1e-6) return out.copy(STOP_COL[i+1]);
+      return mixOklch(STOP_LCH[i], STOP_LCH[i+1], f, HUE_LONG[i], out);
     }
   }
-  return out.copy(GRAD[GRAD.length-1][1]);
+  return out.copy(STOP_COL[STOP_COL.length - 1]);   // past the last stop: hold it
 }
+const stopAt = (t, out) => rampAt(STOP_AT, t, out);
+
+/* the car's livery: the same four stops laid along its length,
+   rear (t=0) → front tip (t=1) */
+const GRAD_POS = [0.00, 0.36, 0.70, 1.00];
+const GRAD_FLIP = false;               // flip if the ends come out reversed
+const gradColor = (t, out) => rampAt(GRAD_POS, t, out);
 const _gv = new THREE.Vector3(), _gc = new THREE.Color();
 function applyLengthGradient(mesh){     // bake per-vertex colours along car length (Z)
   const geom = mesh.geometry = mesh.geometry.clone();
@@ -1674,6 +1877,7 @@ function buildGlbCar(tint){
 function attachGlb(entry){
   entry.body.remove(entry.procGroup);
   entry.body.add(buildGlbCar(entry.tint));
+  CAR.seq++;
 }
 
 // embedded data-URI (car_model.js) first so it works over file://; path fallback
@@ -1696,7 +1900,11 @@ new THREE.GLTFLoader().load(CAR_SRC, (gltf) => {
     pendingCars.forEach(attachGlb); pendingCars.length = 0;
     console.log('F1 GLB loaded — swapped', 1 + pendingCars.length, 'car(s)');
   } catch (e) { console.error('F1 GLB attach failed; keeping procedural car', e); }
-}, undefined, (err) => { console.error('F1 GLB failed to load; keeping procedural car', err); });
+  assetDone('car');
+}, undefined, (err) => {
+  console.error('F1 GLB failed to load; keeping procedural car', err);
+  assetDone('car');
+});
 
 function makeRallyCar(primary, accent){
   const body = new THREE.Group();
@@ -2094,15 +2302,20 @@ const Hero = (() => {
   /* --- game-world hint: a sand ground + start-line stripes that fade in over
      the final scroll segment, so the car reads as parked on the grid rather
      than floating on white. Lives only in hScene; discarded at fade-out. --- */
+  /* ★ Deliberately NOT the game's sand. The story stage is one constant
+     ground colour and the finale is the payoff frame, so bringing a desert
+     tan in for the last 18 % would break the palette exactly where it should
+     be strongest. The game's own sand arrives across the 0.8 s dissolve,
+     where a ground-colour change reads as a location change, not a glitch. */
   const envGroup = new THREE.Group(); envGroup.visible = false; hScene.add(envGroup);
   const hGround = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
-    new THREE.MeshBasicMaterial({ color:PAL.sand, transparent:true, opacity:0 }));
+    new THREE.MeshBasicMaterial({ color:0x150A3E, transparent:true, opacity:0 }));
   hGround.rotation.x = -Math.PI/2; hGround.position.y = -0.02; envGroup.add(hGround);
-  // start line: alternating light/dark blocks running across the track ahead
+  // start line: alternating dark/light blocks running across the track ahead
   const startLine = new THREE.Group(); startLine.position.set(0, 0.02, 6);
   for (let i = 0; i < 12; i++) {
     const blk = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9),
-      new THREE.MeshBasicMaterial({ color: i % 2 ? PAL.ink : PAL.line,
+      new THREE.MeshBasicMaterial({ color: i % 2 ? 0x0B0332 : 0xF3EFF7,
         transparent:true, opacity:0 }));
     blk.rotation.x = -Math.PI/2; blk.position.set((i - 5.5) * 0.9, 0, 0);
     startLine.add(blk);
@@ -2116,58 +2329,295 @@ const Hero = (() => {
     for (let i = 1; i < envMats.length; i++) envMats[i].opacity = t * 0.9;
   }
 
-  /* --- SIGNATURE: procedural KASI battery pack tucked under the car.
-     Rides as a child of the car (inherits its orientation). packT drives
-     the whole tray down + each layer fanning apart vertically. --- */
-  const pack = new THREE.Group();
-  pack.position.set(0, 0.16, -0.1);
-  pack.visible = false;
-  car.add(pack);
-  const packParts = [];
-  const addPart = (mesh, ey, ex = 0) => {
-    mesh.userData.base = mesh.position.clone();
-    mesh.userData.exp  = new THREE.Vector3(ex, ey, 0);
-    pack.add(mesh); packParts.push(mesh);
-  };
-  // ink tray (casing floor) — sinks lowest
-  addPart(new THREE.Mesh(new THREE.BoxGeometry(2.0,0.18,2.7), matFlat(PAL.ink)), -0.95);
-  // 3×4 prismatic cell grid — spreads out sideways as it separates
-  for (let cx = 0; cx < 3; cx++)
-    for (let cz = 0; cz < 4; cz++) {
-      const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.5,10),
-        matFlat(cx % 2 ? PAL.orange : PAL.yellow));
-      cell.position.set((cx-1)*0.58, 0.28, (cz-1.5)*0.6);
-      addPart(cell, 0.05, (cx-1)*0.45);
+  /* =====================================================================
+     THE CELLS — one cell, then a module, then the pack.
+
+     The asset is 256 triangles, so cloning is free: all 96 cells are ONE
+     InstancedMesh and one draw call. Every cell shares one material, which
+     is what lets a single stopAt(p) write tint the whole pack at once.
+
+     Instances are ordered centre-outward and each carries its own reveal
+     threshold, so the build blooms from the first cell rather than snapping
+     between formations. The grid itself NEVER moves — cells only rise into
+     slots that were always there, which is what makes it read as assembly
+     rather than as a particle effect.
+     ===================================================================== */
+  const CELL_MAX  = 96;                  // 8 × 12
+  const CELL_H    = 0.22;                // ≈24 cm at this scene's 1 unit ≈ 1.1 m
+  const CELL_PITCH = 0.13;               // model is 0.12 across → a 0.01 gap
+  const MOD_X = 3, MOD_Z = 4;            // the module: 12 cells
+  const PACK_X = 8, PACK_Z = 12;         // the pack: 96
+
+  /* slot layout, ordered: centre cell → the rest of the module → the pack */
+  const cellSlots = (() => {
+    const all = [];
+    // the module is a MOD_X × MOD_Z block sitting as centrally as the pack
+    // allows; floor() rather than a distance test so the count is exactly 12
+    const modX0 = Math.floor((PACK_X - MOD_X) / 2);
+    const modZ0 = Math.floor((PACK_Z - MOD_Z) / 2);
+    for (let ix = 0; ix < PACK_X; ix++)
+      for (let iz = 0; iz < PACK_Z; iz++) {
+        const x = (ix - (PACK_X - 1) / 2) * CELL_PITCH;
+        const z = (iz - (PACK_Z - 1) / 2) * CELL_PITCH;
+        const inMod = ix >= modX0 && ix < modX0 + MOD_X &&
+                      iz >= modZ0 && iz < modZ0 + MOD_Z;
+        all.push({ x, z, d: Math.hypot(x, z), inMod });
+      }
+    // module cells first, then everything else; each group centre-outward
+    all.sort((a, b) => (b.inMod - a.inMod) || (a.d - b.d));
+    const mod = all.filter(s => s.inMod).length;
+    return all.slice(0, CELL_MAX).map((s, i) => {
+      // reveal windows: cell 0 is there from the start; the module fills over
+      // CH2; the remaining 84 surge in at p=0.34 — the beat that carries the
+      // s1→s2 stop change, which has no luminance step of its own.
+      let t0;
+      if (i === 0)          t0 = 0;
+      else if (i < mod)     t0 = 0.16 + (i / mod) * 0.12;
+      else                  t0 = 0.34 + ((i - mod) / (CELL_MAX - mod)) * 0.10;
+      return { x: s.x, z: s.z, t0 };
+    });
+  })();
+
+  const CELLS_GONE_FROM = 0.58, CELLS_GONE_BY = 0.70;
+  let cells = null, cellMat = null;
+  const _cellM = new THREE.Matrix4(), _cellQ = new THREE.Quaternion();
+  const _cellP = new THREE.Vector3(), _cellS = new THREE.Vector3();
+
+  function buildCells(geo, mat){
+    cellMat = mat;
+    cells = new THREE.InstancedMesh(geo, mat, CELL_MAX);
+    cells.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    cells.frustumCulled = false;          // instances move; one shared bound lies
+    cells.count = CELL_MAX;
+    hScene.add(cells);
+  }
+
+  /* p → every instance's matrix + the shared tint. Cells rise 0.15 units into
+     place as they reveal, and sink back out if you scroll up — the whole
+     build is a pure function of p, so it is reversible for free. */
+  function applyCells(pv){
+    if (!cells) return;
+    // past the gone-ramp every instance is scaled to zero and stays there, so
+    // skip 96 matrix writes per frame for the last third of the page
+    if (pv >= CELLS_GONE_BY) { cells.visible = false; return; }
+    let anyVisible = false;
+    for (let i = 0; i < CELL_MAX; i++) {
+      const s = cellSlots[i];
+      // ★ cell 0 has no reveal ramp. The page must OPEN on a whole cell — give
+      //   it the same 0.06 window as the rest and the first frame is an empty
+      //   stage that grows an object, which reads as a loading artefact.
+      const e = i === 0 ? 1 : smoothstep(clamp01((pv - s.t0) / 0.06));
+      // fade the pack out again once the car has closed over it. Starts AFTER
+      // the car reveal so the two overlap — for ~0.08 of the page you can see
+      // the pack through the bodywork, which is the whole point of the beat.
+      const gone = smoothstep(clamp01((pv - CELLS_GONE_FROM) / 0.12));
+      const k = e * (1 - gone);
+      if (k > 0.001) anyVisible = true;
+      _cellP.set(s.x, (1 - e) * -0.15, s.z);
+      _cellS.set(k, k, k);
+      _cellM.compose(_cellP, _cellQ, _cellS);
+      cells.setMatrixAt(i, _cellM);
     }
-  // cream busbar plate — floats highest
-  addPart(new THREE.Mesh(new THREE.BoxGeometry(1.9,0.07,2.55), matFlat(0xF3E9CF)), 0.95);
-  // orange terminal caps
-  for (const s of [-1,1])
-    addPart(new THREE.Mesh(new THREE.BoxGeometry(0.34,0.22,0.34), matFlat(PAL.deep)),
-            1.15, s*0.7);
-  pack.visible = false;
-  car.remove(pack);            // battery pack disabled — never shown on the car
-  function applyPack(t){ /* battery reveal removed */ }
+    cells.instanceMatrix.needsUpdate = true;
+    cells.visible = anyVisible;
+    if (cellMat) {
+      stopAt(pv, cellMat.color);              // the live stop, on every cell
+      cellMat.emissive.copy(cellMat.color);
+      cellMat.emissiveIntensity = 0.16 + 0.30 * clamp01(pv / 0.72);
+    }
+  }
+
+  /* ---- load the cell ---------------------------------------------------
+     Embedded data-URI (battery_model.js) first, path second — the same
+     belt-and-braces the car uses. It costs ~1.2 MB of base64, but serving
+     this by path alone is what made the battery act invisible on a local
+     open: the fetch is blocked under file:// and the cells simply never
+     built, leaving an empty stage until the car faded in. */
+  const CELL_SRC = (typeof window !== 'undefined' && window.KASI_CELL_GLB)
+                   || 'm200_auxiliary_fuel_cell.glb';
+  new THREE.GLTFLoader().load(CELL_SRC, (gltf) => {
+    try {
+      const root = gltf.scene;
+      root.updateMatrixWorld(true);
+      let src = null;
+      root.traverse(o => { if (o.isMesh && !src) src = o; });
+      if (!src) throw new Error('no mesh in cell GLB');
+      // bake the node transform into the geometry so an instance matrix is
+      // the ONLY transform in play
+      const geo = src.geometry.clone();
+      geo.applyMatrix4(src.matrixWorld);
+      /* ★ Stand it up BEFORE measuring. The Sketchfab wrapper carries a −90°
+           X rotation (the source is Z-up), so once the node matrix is baked
+           the cylinder's long axis sits on Z: raw bounds 0.12×0.22×0.12
+           become 0.12×0.12×0.22. Normalising "height" without this picks the
+           DIAMETER, scales the whole cell 1.8× to compensate, and lays it on
+           its side — a fat drum instead of a cell. Detect the long axis
+           rather than hardcoding the fix, so a re-export can't silently
+           reintroduce it. */
+      geo.computeBoundingBox();
+      let size = geo.boundingBox.getSize(new THREE.Vector3());
+      if (size.z > size.y)      geo.rotateX(Math.PI / 2);
+      else if (size.x > size.y) geo.rotateZ(Math.PI / 2);
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      size = bb.getSize(new THREE.Vector3());
+      const ctr = bb.getCenter(new THREE.Vector3());
+      geo.translate(-ctr.x, -bb.min.y, -ctr.z);   // axis at origin, base on y=0
+      // normalise height so the grid maths never depends on the asset's units
+      const k = CELL_H / (size.y || 1);
+      geo.scale(k, k, k);
+      /* The GLB material is monochrome charcoal, so .color multiplies it into
+         whichever stop we are at. Clone so tinting can't leak to other users.
+
+         ★ The asset ships metalness:1. A fully metallic surface takes ALL of
+           its colour from reflections, and the hero scene has no environment
+           map — so as authored the cell renders BLACK and no tint is visible
+           at any stop. Dropping it to a near-dielectric is what lets the
+           four stops actually read on the object.
+         ★ Emissive rises with charge. It is not decoration: it is the same
+           "luminance climbs as the pack fills" rule the palette is ordered
+           by, applied to the object instead of to the colour. */
+      const mat = src.material.clone();
+      mat.metalness = 0.12;
+      mat.roughness = 0.62;
+      mat.color = new THREE.Color(STOP_HEX[0]);
+      mat.emissive = new THREE.Color(STOP_HEX[0]);
+      mat.emissiveIntensity = 0.18;
+      buildCells(geo, mat);
+      applyCells(p);
+      console.log('KASI cell GLB loaded —', CELL_MAX, 'instances, 1 draw call');
+    } catch (e) {
+      console.error('cell GLB attach failed; continuing without cells', e);
+    }
+    assetDone('cell');
+  }, undefined, (err) => {
+    console.error('cell GLB failed to load; continuing without cells', err);
+    assetDone('cell');
+  });
+
+  /* --- the car closes over the pack ------------------------------------
+     Bodywork fades up from p=0.46 while the cells fade out from p=0.54, so
+     for about a tenth of the page you can see the pack THROUGH the car — it
+     is not a cut, it is the car assembling around what you have been
+     watching since the first frame.
+
+     ★ Materials are CLONED on first use. matStripe (and any material a
+       wheelMaterials() call happens to share) is reused by the AI cars in
+       the game; fading the originals would drag their tyres transparent
+       too. The clones are hero-only, so the fade cannot leak.
+     ★ The mesh count is re-checked each frame during the fade because the
+       GLB swaps in asynchronously — prep once at load time and you would
+       be fading the procedural placeholder's materials, not the real car's. */
+  /* ★ Gated on CAR.seq, not on a per-frame traversal. The first version
+     counted the car's meshes every frame to notice the GLB swap — a full
+     graph walk on every frame from p=0.54 to the end of the page, which is
+     half the story spent re-deriving something that changes once. */
+  let carMatSeq = -1;
+  const carMats = [];
+  function syncCarMats(){
+    if (carMatSeq === CAR.seq) return;
+    carMatSeq = CAR.seq;
+    carMats.length = 0;
+    car.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      o.material = o.material.clone();
+      o.material.transparent = true;
+      carMats.push(o.material);
+    });
+  }
+  function revealCar(t){
+    car.visible = hShadow.visible = t > 0.002;
+    if (!car.visible) return;
+    syncCarMats();
+    for (const m of carMats) {
+      m.opacity = t;
+      /* ★ depthWrite stays ON for the whole fade. With it off, a half-opaque
+         F1 shows every internal surface at once — suspension, floor, engine,
+         the far side of its own bodywork — and reads as an exploded x-ray
+         rather than a car materialising. Writing depth means the nearest
+         shell wins and you see one ghosted skin, which is the intent. */
+      m.depthWrite = true;
+    }
+  }
+  revealCar(0);                  // the page opens on a cell, not a car
 
   /* --- scroll timeline: keyframes across the whole story (fractions of P).
-     Camera position + look target + car orientation + scene colour + pack
-     fan, all interpolated by global scroll progress. K0 arrival keeps the
-     live free-spin; K6 lands exactly on the game chase-cam pose. --- */
+     Camera position + look target + car orientation + scene colour, all
+     interpolated by global scroll progress.
+
+     THE LADDER — the camera retreats monotonically, because every beat is a
+     bigger object than the last and the page is one long pull-back:
+
+       K0  0.00  ONE cell, 24 cm tall, filling the frame            dist 0.58
+       K1  0.16  still one cell; swung off-axis as ch1 arrives      dist 0.86
+       K2  0.34  the module — 12 cells                             dist 1.6
+       K3  0.50  the pack — 96 cells                               dist 3.5
+       K4  0.62  the merge: the car has closed over the pack       dist 11.3
+       K5  0.72  front three-quarter — telemetry                   dist 11.8
+       K6  0.84  broadside — Langa Langa                           dist 13.2
+       K7  0.93  rising, pulling back                              dist 22.8
+       K8  1.00  the grid                                          dist 33
+
+     ★ K0 sits 0.58 units from a 0.22-tall object — about 2.6× its height.
+       The asset is 256 triangles with all of its detail in a normal map, so
+       any closer and it reads as a flat sticker. Do not move K0 nearer.
+     ★ K8 IS LOCKED to CFG.camBack (30) / CFG.camHeight (14). START ENGINE is
+       a match cut into the game, and it only works while these agree. --- */
   const EU = (x,y,z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z));
-  // `side` = screen-space lateral aim offset (fraction of view distance).
-  // +side aims the camera right, pushing the car to screen-LEFT; -side to the
-  // RIGHT. Set per keyframe so the car sits in the empty half opposite the text.
+  /* `side` = screen-space lateral aim offset (fraction of view distance).
+     +side aims the camera right, pushing the SUBJECT to screen-LEFT; -side
+     pushes it right. Each value is chosen against the chapter that is at
+     mid-screen at that p, so the object always sits in the empty half:
+        ch1 .120 → subject R / text L      ch5 .681 → subject L / text R
+        ch2 .264 → subject R / text L      ch6 .833 → subject R / text L
+        ch3 .408 → subject L / text R      ch7 .986 → centred, finale
+        ch4 .544 → subject L / text R
+     ★ The positive hold across K4→K5 exists so the sign does not flip while
+       ch5's copy is on screen; without it the car crosses the text. */
   const KEYS = [
-    { at:0.00, cam:[0,1.7,-6.8], look:[0,0.8,0],  q:EU(0,0,0),        stop:'white', pack:0, side:0    },
-    { at:0.15, cam:[5.4,2.1,-5.8],look:[0,1.0,0],  q:EU(.05,-0.7,0),  stop:'cream', pack:0, side:-0.28},
-    { at:0.35, cam:[1.6,0.75,7.6],look:[0,1.35,0], q:EU(0,0.5,0),     stop:'ink',   pack:1, side:-0.10},
-    { at:0.54, cam:[-7.2,4.8,-10.5],look:[0,1.1,0],q:EU(.04,1.05,0),  stop:'orange',pack:0, side:0.28 },
-    { at:0.70, cam:[12.8,3.0,0.5],look:[0,1.0,0],  q:EU(0,1.9,0),     stop:'blue',  pack:0, side:-0.26},
-    { at:0.87, cam:[0,8.8,-21],  look:[0,2.0,5],   q:EU(0,0.05,0),    stop:'gold',  pack:0, side:-0.12},
-    { at:1.00, cam:[0,14,-30],   look:[0,2.0,8],   q:EU(0,0,0),       stop:'gold',  pack:0, side:0    },
+    /* ★ |side| is much smaller through the battery act than it is on the car.
+         The offset is a fraction of view distance, so it moves a WIDE subject
+         much further than a compact one: at -0.28 the 8×12 pack walks clean
+         off the right edge. The car can take the full 0.26; a grid cannot. */
+    { at:0.00, cam:[0,0.34,-0.60],   look:[0,0.11,0], q:EU(0,0,0),      stop:'white', side:0    },
+    { at:0.16, cam:[0.62,0.40,-0.72],look:[0,0.11,0], q:EU(0,-0.7,0),   stop:'cream', side:-0.20},
+    { at:0.34, cam:[1.25,0.80,-1.25],look:[0,0.10,0], q:EU(0,0.5,0),    stop:'ink',   side:-0.10},
+    { at:0.50, cam:[-3.0,2.3,-3.0],  look:[0,0.09,0], q:EU(0,1.05,0),   stop:'orange',side:0.14 },
+    /* ★ The car act orbits ONE WAY around the car and never cuts across it.
+         The previous run went rear-left → front-right, which are nearly
+         opposite: any interpolation between them, spline or straight line,
+         passes close to the origin. The camera dived from 11.3 units out to
+         3.9 — inside the car's own length — and back out again in the space
+         of a tenth of the page. That was the worst lurch on the page.
+         Keeping successive azimuths under ~75° apart keeps every chord
+         outside the bodywork. Verify with the closest-approach probe if you
+         move these: nothing after p=0.54 should come within ~6 units. */
+    { at:0.62, cam:[-9.2,5.0,-8.7],  look:[0,1.0,0],  q:EU(.04,1.05,0), stop:'blue',  side:0.12 },
+    { at:0.72, cam:[-17.0,4.0,0.6],  look:[0,1.1,0],  q:EU(0,0.55,0),   stop:'blue',  side:0.12 },
+    { at:0.84, cam:[-13.5,3.6,7.8],  look:[0,1.0,0],  q:EU(0,0.20,0),   stop:'blue',  side:-0.20},
+    { at:0.93, cam:[-14.1,8.0,-14.1],look:[0,2.0,5],  q:EU(0,0.05,0),   stop:'gold',  side:-0.12},
+    { at:1.00, cam:[0,14,-30],       look:[0,2.0,8],  q:EU(0,0,0),      stop:'gold',  side:0    },
   ];
   for (const k of KEYS) { k.camV = new THREE.Vector3(...k.cam);
     k.lookV = new THREE.Vector3(...k.look); k.colC = new THREE.Color(0xffffff); }
+
+  /* ★ The camera rides ONE continuous spline, not nine straight lines.
+     Interpolating each segment separately and easing it with smoothstep
+     means the camera decelerates to a dead stop at every keyframe and then
+     accelerates away again — nine times down the page. That is the
+     "herky-jerky" feel: it is not dropped frames, it is the path itself.
+     A centripetal Catmull-Rom is C1 continuous, so speed and direction
+     carry through each keyframe instead of resetting at it.
+
+     three.js maps control point i to curve parameter i/(N−1), so every
+     keyframe is still hit EXACTLY — including K8, which has to stay on the
+     game's chase-cam pose for the match cut. Centripetal (rather than the
+     default uniform) is the variant that will not overshoot or loop on the
+     tight cluster of cell keyframes at the top of the page. */
+  const camCurve  = new THREE.CatmullRomCurve3(KEYS.map(k => k.camV),  false, 'centripetal');
+  const lookCurve = new THREE.CatmullRomCurve3(KEYS.map(k => k.lookV), false, 'centripetal');
+  const LAST_SEG   = KEYS.length - 2;   // highest segment index (8 segments)
+  const CURVE_SPAN = KEYS.length - 1;   // curve parameter denominator
   // recolour the scroll scene backgrounds from a scheme's stop map
   function setStops(stops){ for (const k of KEYS) if (stops[k.stop]) k.colC.set(stops[k.stop]); }
   const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
@@ -2188,6 +2638,20 @@ const Hero = (() => {
 
   let dragging = false, active = true, p = 0, pTarget = 0;
   let lastX = 0, lastY = 0, lastT = performance.now();
+  /* Quantise p for the accent write (see the call site), but SNAP to a stop
+     when we land within half a step of one. Without the snap the grid misses
+     0.34 and 0.72 — 240 steps don't divide them — and the page would render
+     #884e95 where the palette specifies #8A4D93. Invisible to the eye, but
+     the stops are the spec, so they should be exact where they're claimed. */
+  const ACCENT_STEPS = 240, _accentSnap = 0.5 / ACCENT_STEPS;
+  function accentP(pv){
+    const q = Math.round(pv * ACCENT_STEPS) / ACCENT_STEPS;
+    for (const s of STOP_AT) if (Math.abs(q - s) <= _accentSnap) return s;
+    return q;
+  }
+  const _accentCol = new THREE.Color();
+  const _qUp = new THREE.Quaternion();     // identity — the cells' resting pose
+  let lastStopHex = '';
 
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -2201,10 +2665,11 @@ const Hero = (() => {
      naturally instead of needing a separate exit animation. At the end of the
      flight the two coincide exactly, so swapping which one is visible is
      invisible, and from then on the in-flow image scrolls away on its own.
-     Section 01's top edge lands at p ~= 0.148, hence the 0.02 -> 0.16 window. */
+     With the reweave, ch1 now centres at p ~= 0.12 (it used to be ~0.148),
+     so the hand-off window closes earlier — hence 0.015 -> 0.13. */
   const heroLogo = document.querySelector('#heroTitle .kasi');
   const ch1Logo  = document.getElementById('ch1Logo');
-  const DOCK_A = 0.02, DOCK_B = 0.16;
+  const DOCK_A = 0.015, DOCK_B = 0.13;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let restRect = null;                 // hero logo's untransformed viewport rect
   function measureRest(){
@@ -2421,15 +2886,27 @@ const Hero = (() => {
       qYaw.setFromAxisAngle(eY, dt * 0.4);
       qFree.premultiply(qYaw);
     }
+    applyState();
+  }
 
+  /* Everything the timeline drives, as a pure function of `p`. Split out of
+     frame() so it can be driven without waiting on rAF — see Hero.scrub().
+     Keeping this side of the loop time-independent is also what makes the
+     whole story reversible: scrolling up runs the same code with a smaller p. */
+  function applyState(){
     // locate the active keyframe segment for the current scroll progress
     let i = 0;
-    while (i < KEYS.length - 2 && p > KEYS[i+1].at) i++;
+    while (i < LAST_SEG && p > KEYS[i+1].at) i++;
     const a = KEYS[i], b = KEYS[i+1];
-    const t = smoothstep(clamp01((p - a.at) / (b.at - a.at)));
+    const tLin = clamp01((p - a.at) / (b.at - a.at));
+    /* Ease only the FIRST and LAST segments, so the page settles when it
+       arrives and when it lands. Easing the middle ones too is what put a
+       full stop at every interior keyframe. */
+    const t = (i === 0 || i === LAST_SEG) ? smoothstep(tLin) : tLin;
 
-    camPos.lerpVectors(a.camV, b.camV, t);
-    lookAt.lerpVectors(a.lookV, b.lookV, t);
+    // one continuous path; control point i sits at curve parameter i/(N−1)
+    camCurve.getPoint((i + t) / CURVE_SPAN, camPos);
+    lookCurve.getPoint((i + t) / CURVE_SPAN, lookAt);
     // portrait: pull the camera back and centre the car so it's never cropped
     if (heroMQ.matches) camPos.sub(lookAt).multiplyScalar(1.12).add(lookAt);
     hCam.position.copy(camPos);
@@ -2451,9 +2928,36 @@ const Hero = (() => {
     else         qCar.copy(a.q).slerp(b.q, t);
     car.quaternion.copy(qCar);
 
-    applyPack(a.pack + (b.pack - a.pack) * t);
-    // warm the world in over the final stretch: sand ground + start line
-    revealEnv(clamp01((p - 0.80) / 0.16));
+    /* The arrival cell answers drag-to-tumble — without this the gesture
+       spins a car nobody can see yet. Only instance 0 is up at this point,
+       so rotating the whole InstancedMesh rotates exactly that one cell; by
+       p=0.16, when the module starts filling in, the grid is upright again. */
+    if (cells) {
+      const settle = smoothstep(clamp01(p / 0.16));
+      cells.quaternion.copy(qFree).slerp(_qUp, settle);
+    }
+
+    // the cells build; the car closes over them
+    applyCells(p);
+    /* ★ The car must not appear before K3 (p=0.50). That keyframe is framed
+       for a 1.6-unit pack at ~4.8 units out; a 5-unit car arriving there
+       fills the whole viewport and buries the thing the chapter is about. */
+    revealCar(clamp01((p - 0.54) / 0.12));
+    // warm the world in over the final stretch: ground + start line
+    revealEnv(clamp01((p - 0.82) / 0.14));
+
+    /* ONE value paints the page — cells, rail, accent words, the button.
+       ★ Quantised to 240 steps before the write. Setting a custom property on
+         :root invalidates style for the WHOLE document, and consecutive frames
+         differ by a channel or two, so an unquantised version forced a full
+         style recalc on nearly every frame of the scroll. 240 steps is finer
+         than the eye can follow across an 8-viewport page and costs at most
+         240 recalcs instead of thousands. */
+    const stopHex = '#' + stopAt(accentP(p), _accentCol).getHexString();
+    if (stopHex !== lastStopHex) {
+      document.documentElement.style.setProperty('--accent', stopHex);
+      lastStopHex = stopHex;
+    }
 
     // HUD-ish chrome the scroll drives
     const pct = Math.round(p * 100);
@@ -2490,7 +2994,21 @@ const Hero = (() => {
     scrollTo(0, scrollToEnd ? scrollMax() : 0);
     onScroll();
   }
-  return { fadeOut, show, setStops };
+  /* Jump the timeline to an exact p and paint one frame, bypassing both the
+     scroll position and the rAF easing. This is how you check the story
+     without scrolling it: Hero.scrub(0.34) etc. Reversibility is the thing
+     it is really for — run it descending and every beat must play backwards,
+     because applyState() reads p and nothing else. */
+  function scrub(pv){
+    p = pTarget = clamp01(pv);
+    // the bits onScroll() normally owns, so a scrubbed frame is a faithful
+    // preview and not just the 3D half of one
+    startWrap.classList.toggle('on', pTarget > 0.965);
+    scrollHint.style.opacity = String(Math.max(0, 1 - pTarget * 6));
+    applyState();
+    return p;
+  }
+  return { fadeOut, show, setStops, scrub };
 })();
 
 /* =====================================================================
@@ -2513,7 +3031,10 @@ const Hero = (() => {
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {});
     (function tick(){
       const elapsed = performance.now() - t0;
-      const cap = (loaded && elapsed > 650) ? 100 : 90;   // hold near-full until ready
+      // hold near-full until the page AND both GLBs are in. The 12 s escape
+      // hatch means a stalled CDN degrades to "starts anyway", not a dead page.
+      const modelsIn = ASSETS.ready || elapsed > 12000;
+      const cap = (loaded && modelsIn && elapsed > 650) ? 100 : 90;
       prog += (cap - prog) * 0.07;
       if (cap === 100 && prog > 99.3) prog = 100;
       const v = Math.min(100, prog);
@@ -2558,24 +3079,19 @@ const Hero = (() => {
     return [(n>>16)&255, (n>>8)&255, n&255]; };
   const lum = h => { const [r,g,b] = hexRgb(h);
     return (0.2126*r + 0.7152*g + 0.0722*b) / 255; };
-  /* Two schemes only: index 0 = light (Turquoise), 1 = dark (Jewel).
-     Each: token colours + paper(light text) + ink(dark text) + stops map. */
+  /* ONE scheme. The world is a single constant ground (#0B0332) at every
+     scroll position — the story's colour lives entirely in stopAt(p), which
+     tints the SUBJECT, not the background. Every entry in `stops` is
+     therefore the same value on purpose: the per-chapter background machinery
+     still runs, it just resolves to the same colour, so the scene never
+     changes hue behind the object being charged.
+     Light mode is withdrawn — see the #themeToggle note in the CSS. */
   const SCHEMES = [
-    { name:'Turquoise', cream:'#EAF5F5', ink:'#123A4A', paper:'#F2FAFA', orange:'#2AA9C9',
-      yellow:'#E6C25A', blue:'#7A5CC8', green:'#8FC978', sand:'#CFE7E6',
-      stops:{ white:'#EAF5F5', cream:'#D6ECEC', ink:'#123A4A', orange:'#2AA9C9', blue:'#7A5CC8', gold:'#E7D3A0' } },
-    { name:'Jewel', cream:'#20264F', ink:'#161C40', paper:'#EAF2F6', orange:'#33B4D1',
-      yellow:'#E6B84F', blue:'#8A5CD0', green:'#8FC978', sand:'#151A3B',
-      stops:{ white:'#20264F', cream:'#182046', ink:'#0F1436', orange:'#33B4D1', blue:'#8A5CD0', gold:'#2A3266' } },
+    { name:'Amethyst', paper:'#FFFFFF', ink:'#0B0332', sand:GROUND,
+      stops:{ white:GROUND, cream:GROUND, ink:GROUND, orange:GROUND, blue:GROUND, gold:GROUND } },
   ];
-  const LIGHT = 0, DARK = 1;
-  // stored preference wins; otherwise follow the OS
-  let curScheme = LIGHT;
-  try {
-    const saved = localStorage.getItem('kasiTheme');
-    if (saved === 'dark') curScheme = DARK;
-    else if (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) curScheme = DARK;
-  } catch (e) {}
+  const LIGHT = 0, DARK = 0;      // both indices resolve to the only scheme
+  let curScheme = 0;
 
   function setThemeFg(name){                 // pick light/dark text from bg luminance
     const S = SCHEMES[curScheme];
@@ -2588,8 +3104,9 @@ const Hero = (() => {
   }
   function applyScheme(i){
     curScheme = i; const S = SCHEMES[i];
-    for (const t of ['cream','ink','orange','yellow','blue','green','sand','paper'])
-      root.style.setProperty('--' + t, S[t]);
+    /* NB: the --cream/--ink/--orange family is intentionally NOT written here
+       any more. Those belong to the game's chrome, which keeps the desert
+       palette. The story's colour arrives via --accent (stopAt) and --fg. */
     if (typeof Hero !== 'undefined' && Hero.setStops) Hero.setStops(S.stops);
     if (typeof setCarEnv === 'function') setCarEnv(S);   // chrome reflects the active theme
     setThemeFg(document.body.dataset.theme || 'white');

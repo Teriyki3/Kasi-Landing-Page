@@ -1,4 +1,12 @@
 .vercel
-formula_1_car.glb
 bash.exe.stackdump
 Kasi Logo svg.svg
+
+# Raw model sources. Both models ship inlined as base64 data-URIs
+# (car_model.js / battery_model.js), which is what the page actually loads —
+# the .glb path in each SRC constant is only a vestigial fallback.
+formula_1_car.glb
+m200_auxiliary_fuel_cell.glb
+
+# Client brand material — this repo is public. Kept local on purpose.
+Brand Breakdown Doc_1.pdf

@@ -477,7 +477,10 @@
     pointer-events:auto;font-family:inherit;line-height:1;}
   #pauseBtn:hover{background:var(--orange);}
 
-  /* ============ TOUCH CONTROLS (coarse pointers only) ============ */
+  /* ============ TOUCH CONTROLS (coarse pointers only) ============
+     A single analog stick, centred at the bottom of the screen — the spot
+     a camera app would put a shutter button — low enough that it never
+     overlaps the car. See the JOYSTICK module in the game script. */
   #touch{position:absolute;inset:0;display:none;pointer-events:none;}
   @media (pointer: coarse){
     #touch{display:block;}
@@ -485,16 +488,16 @@
     #driftTag{bottom:248px;}
     #driftScore{bottom:226px;}
     #progWrap{bottom:130px;}
-    .tGroup{bottom:calc(26px + env(safe-area-inset-bottom));}
+    #joystick{bottom:calc(26px + env(safe-area-inset-bottom));}
   }
-  .tGroup{position:absolute;bottom:26px;display:flex;gap:14px;align-items:flex-end;pointer-events:none;}
-  .tGroup.left{left:20px;}
-  .tGroup.right{right:20px;}
-  .tBtn{pointer-events:auto;width:78px;height:78px;border-radius:50%;border:none;
-    background:rgba(58,46,34,.38);color:var(--cream);font-family:inherit;font-size:15px;
-    letter-spacing:1px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;}
-  .tBtn.gas{width:94px;height:94px;background:rgba(232,84,47,.5);}
-  .tBtn:active{background:rgba(232,84,47,.7);}
+  #joystick{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    width:132px;height:132px;border-radius:50%;pointer-events:auto;
+    background:rgba(58,46,34,.32);border:2px solid rgba(243,233,207,.4);
+    touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;}
+  #joyKnob{position:absolute;left:50%;top:50%;width:60px;height:60px;border-radius:50%;
+    background:rgba(232,84,47,.55);transform:translate(-50%,-50%);
+    pointer-events:none;transition:background .15s;}
+  #joystick.active #joyKnob{background:rgba(232,84,47,.85);}
 
   /* ============ SCREENS ============ */
   .screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
@@ -875,14 +878,11 @@
   <canvas id="minimap" width="150" height="150"></canvas>
   <button id="pauseBtn" title="Pause (Esc / P)">&#10074;&#10074;</button>
   <div id="touch">
-    <div class="tGroup left">
-      <button class="tBtn" data-key="left">&#9664;</button>
-      <button class="tBtn" data-key="right">&#9654;</button>
-    </div>
-    <div class="tGroup right">
-      <button class="tBtn" data-key="down">BRAKE</button>
-      <button class="tBtn gas" data-key="up">GAS</button>
-    </div>
+    <!-- single analog stick: push up = throttle, pull down = brake/reverse,
+         push left/right = steer. Replaces the old four-button mobile layout
+         so nothing overlaps the car — see the JOYSTICK module for the logic
+         that turns a held turn into an automatic drift. -->
+    <div id="joystick"><div id="joyKnob"></div></div>
   </div>
 </div>
 
@@ -994,7 +994,12 @@ const CFG = {
    INPUT
    ===================================================================== */
 const Input = (() => {
-  const k = { up:false, down:false, left:false, right:false, hand:false };
+  // throttleAxis/brakeAxis/steerAxis are magnitudes (0..1) the joystick
+  // scales acceleration/steering by; keyboard never sets them, so Car.step
+  // treats a missing axis as "full" (?? 1) and digital keys behave exactly
+  // as before.
+  const k = { up:false, down:false, left:false, right:false, hand:false,
+    throttleAxis:undefined, brakeAxis:undefined, steerAxis:undefined };
   const map = {
     ArrowUp:'up', KeyW:'up', ArrowDown:'down', KeyS:'down',
     ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right',
@@ -1009,20 +1014,86 @@ const Input = (() => {
   addEventListener('keyup', e => {
     if (map[e.code] !== undefined) { k[map[e.code]] = false; e.preventDefault(); }
   });
-  /* touch buttons write into the same key-state object */
-  for (const b of document.querySelectorAll('#touch .tBtn')) {
-    const key = b.dataset.key;
-    const off = () => { k[key] = false; };
-    b.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      b.setPointerCapture(e.pointerId);
-      k[key] = true;
-    });
-    b.addEventListener('pointerup', off);
-    b.addEventListener('pointercancel', off);
-    b.addEventListener('contextmenu', e => e.preventDefault());
-  }
   return k;
+})();
+
+/* =====================================================================
+   JOYSTICK — mobile-only analog stick, replacing the old four-button
+   touch layout. Push up for throttle (the further, the faster), pull
+   down to brake/reverse, push left/right to steer — all proportional to
+   how far the stick is held. Letting go returns it to centre, which
+   zeroes throttle and lets the car's own drag coast it down, same as
+   releasing the keyboard's gas key. Holding a turn far enough for
+   DRIFT_HOLD seconds, while going fast enough, auto-engages the
+   handbrake so a single stick can still trigger the game's drift.
+   Writes straight into the shared Input object above — only active on
+   coarse-pointer (touch) devices so it never fights keyboard input.
+   ===================================================================== */
+const Joystick = (() => {
+  const base = document.getElementById('joystick');
+  const knob = document.getElementById('joyKnob');
+  const isTouch = matchMedia('(pointer: coarse)').matches;
+  if (!base || !knob || !isTouch) return { update(){} };
+
+  const RADIUS = 46;        // px the knob can travel from centre
+  const DEAD = 0.12;        // ignore jitter near centre
+  const TURN_HOLD_MIN = 0.35;  // stick must be turned at least this far to count
+  const DRIFT_HOLD = 0.9;      // seconds of sustained turning before auto-drift
+  const DRIFT_MIN_SPEED = 9;   // m/s — must be going roughly this fast to drift
+
+  let pointerId = null, cx = 0, cy = 0, nx = 0, ny = 0, turnHold = 0;
+
+  function norm(mag){ return mag > DEAD ? Math.min(1, (mag-DEAD)/(1-DEAD)) : 0; }
+
+  function moveTo(clientX, clientY){
+    const dx = clientX - cx, dy = clientY - cy;
+    const mag = Math.min(1, Math.hypot(dx, dy)/RADIUS);
+    const ang = Math.atan2(dy, dx);
+    nx = Math.cos(ang)*mag; ny = Math.sin(ang)*mag;
+    knob.style.transform = `translate(calc(-50% + ${nx*RADIUS}px), calc(-50% + ${ny*RADIUS}px))`;
+  }
+  function release(){
+    pointerId = null; nx = 0; ny = 0; turnHold = 0;
+    knob.style.transform = 'translate(-50%,-50%)';
+    base.classList.remove('active');
+  }
+
+  base.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const r = base.getBoundingClientRect();
+    cx = r.left + r.width/2; cy = r.top + r.height/2;
+    pointerId = e.pointerId;
+    base.setPointerCapture(pointerId);
+    base.classList.add('active');
+    moveTo(e.clientX, e.clientY);
+  });
+  base.addEventListener('pointermove', e => {
+    if (e.pointerId !== pointerId) return;
+    moveTo(e.clientX, e.clientY);
+  });
+  base.addEventListener('pointerup', e => { if (e.pointerId === pointerId) release(); });
+  base.addEventListener('pointercancel', e => { if (e.pointerId === pointerId) release(); });
+  base.addEventListener('contextmenu', e => e.preventDefault());
+
+  function update(dt, speed){
+    const steerMag = norm(Math.abs(nx));
+    Input.left = nx < -DEAD;
+    Input.right = nx > DEAD;
+    Input.steerAxis = steerMag;
+
+    const upMag = ny < -DEAD ? norm(-ny) : 0;
+    const downMag = ny > DEAD ? norm(ny) : 0;
+    Input.up = upMag > 0;
+    Input.down = downMag > 0;
+    Input.throttleAxis = upMag;
+    Input.brakeAxis = downMag;
+
+    const turning = steerMag > TURN_HOLD_MIN && speed > DRIFT_MIN_SPEED;
+    turnHold = turning ? turnHold + dt : 0;
+    Input.hand = turnHold >= DRIFT_HOLD;
+  }
+
+  return { update };
 })();
 
 /* =====================================================================
@@ -2274,13 +2345,16 @@ const Car = (() => {
     S.latSpeed = S.vel.dot(right);
     S.speed = S.vel.length();
 
-    /* longitudinal */
+    /* longitudinal — throttleAxis/brakeAxis (0..1) come from the mobile
+       joystick's push distance; keyboard/AI never set them, so ?? 1 keeps
+       digital keys at full strength exactly as before */
     let fAcc = 0;
     S.throttle = 0;
-    if (c.up) { fAcc += CFG.accel; S.throttle = 1; }
+    if (c.up) { const m = c.throttleAxis ?? 1; fAcc += CFG.accel*m; S.throttle = m; }
     if (c.down) {
-      if (S.fwdSpeed > 0.8) fAcc -= CFG.brake;
-      else if (S.fwdSpeed > -CFG.reverseMax) fAcc -= CFG.accel*0.55;
+      const m = c.brakeAxis ?? 1;
+      if (S.fwdSpeed > 0.8) fAcc -= CFG.brake*m;
+      else if (S.fwdSpeed > -CFG.reverseMax) fAcc -= CFG.accel*0.55*m;
     }
     fAcc -= S.fwdSpeed * CFG.drag;
     fAcc -= Math.sign(S.fwdSpeed) * Math.min(Math.abs(S.fwdSpeed)*2, CFG.rolling);
@@ -2293,8 +2367,9 @@ const Car = (() => {
     else if (S.onSand) grip = CFG.gripSand;
     const latAcc = THREE.MathUtils.clamp(-S.latSpeed * CFG.latStiff, -grip, grip);
 
-    /* steering / yaw — +1 steers toward the right vector */
-    const steer = (c.left ? 1 : 0) - (c.right ? 1 : 0); // heading+ turns screen-left behind the chase cam
+    /* steering / yaw — +1 steers toward the right vector; steerAxis (0..1)
+       is the joystick's sideways push distance, ?? 1 for keyboard/AI */
+    const steer = ((c.left ? 1 : 0) - (c.right ? 1 : 0)) * (c.steerAxis ?? 1);
     const speedFac = THREE.MathUtils.clamp(Math.abs(S.fwdSpeed)/12, 0, 1)
                    / (1 + Math.abs(S.fwdSpeed)*0.010);
     let target = steer * CFG.steerRate * speedFac * Math.sign(S.fwdSpeed || 1);
@@ -4558,6 +4633,10 @@ const Game = (() => {
       ui.count.style.display = 'none';
 
     const racing = G.state === 'race' && !G.paused;
+
+    /* mobile joystick: turns stick position + hold-time into the same
+       Input fields the keyboard writes (no-op on non-touch devices) */
+    if (racing) Joystick.update(dt, Car.S.speed);
 
     /* physics (frozen while paused); autopilot drives the victory lap */
     if (!G.paused)

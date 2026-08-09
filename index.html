@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>KASI — Cells for the Continent's Grid</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,8 +46,14 @@
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;height:100%;background:var(--ground);
     font-family:'Arial Black','Helvetica Neue',Arial,sans-serif;user-select:none;}
-  /* body is the scroll container: landing on top, game fixed behind */
-  body{overflow-x:hidden;overflow-y:scroll;}
+  /* body is the scroll container: landing on top, game fixed behind.
+     overflow-x is pinned on BOTH html and body (belt-and-braces — some
+     mobile browsers only honour it on whichever element ends up as the
+     actual viewport scroller) and overscroll-behavior-x kills the
+     iOS/Android rubber-band bounce that otherwise reads as "there's more
+     page to the side" even though nothing ever overflows horizontally. */
+  html{overflow-x:hidden;}
+  body{overflow-x:hidden;overflow-y:scroll;overscroll-behavior-x:none;}
   body.playing{overflow:hidden;}   /* lock scroll once the race is on */
   canvas{display:block;}
   /* the Three.js renderer canvas is prepended to <body>; pin it behind everything */

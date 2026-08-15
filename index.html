@@ -185,14 +185,30 @@
      it sits smaller and further down. A sound and a meaning are two different
      pieces of information and still get real separation from each other. */
   .lede.def{margin-top:14px;font-size:clamp(15px,1.5vw,19px);opacity:.72;}
-  /* Scene 1 carries FOUR elements — wordmark, claim, lede, definition — where
-     the old #ch1b carried two, so the display size steps down to make room.
-     The claim is still the largest thing in the section; it just no longer
-     needs the full 86px it had when it was alone in its chapter. */
+  /* Scene 1: the claim (with the logo as its first word), then the definition.
+     The display size steps down from the full 86px so the two-line head, logo
+     included, clears the fixed chrome. */
   #s1 .h-big{margin-bottom:4px;margin-top:22px;
     font-size:clamp(32px,4.6vw,62px);}
   #s1 .lede{max-width:min(620px,88vw);}
-  #s1 .kasi-mark{width:min(100%,300px);}
+  /* --- the wordmark AS the first word of the headline (items 4-5) ----------
+     The logo replaces the word "KASI". Line 1 is [logo] + "is a", laid out as
+     a baseline row so the mark sits on the text baseline; line 2 is "battery
+     company." below. Sizing the mark by HEIGHT (in em) makes it track the
+     headline: dockHeroLogo() scales the flying hero mark from its rest width to
+     THIS element's measured width, so the flight lands at exactly this size —
+     ~a 68% reduction, matching the surrounding cap height rather than the
+     literal 25% (which would leave the mark ~3× the text height). width:auto
+     keeps the glyph aspect correct. */
+  .hl-row{display:flex;align-items:baseline;gap:.16em;}
+  .kasi-inline{height:.78em;width:auto;display:block;
+    position:relative;top:.06em;}    /* nudge onto the optical baseline */
+  /* headline whose entrance is carried by its .mask clips, not by .rv's
+     opacity/translate — see the markup note. Keeps .rv so the reveal observer
+     still finds it and adds .in. Two-class specificity beats plain .rv (which
+     is what would otherwise hide the logo), and it agrees with .rv.in, so the
+     heading and the inline logo are visible and untransformed the whole time. */
+  .rv.rv-maskonly{opacity:1;transform:none;}
   /* scene 3 steps down for the same reason scene 1 does — at the full 86px the
      two-line head spans the whole viewport and collides with the fixed chrome */
   #s3 .h-big{font-size:clamp(32px,4.8vw,68px);}
@@ -349,6 +365,26 @@
     box-shadow:0 0 0 1px rgba(255,255,255,.14);}
   #paletteDock .sw i{display:block;width:9px;height:14px;}
   #paletteDock .nm{min-width:62px;text-align:left;}
+  /* --- battery X position: a design tuning control, left edge --------------
+     Same mono/hairline treatment as the palette dock. Temporary: it exists to
+     find the right X offset, after which the value is baked in and this goes. */
+  #batteryDock{position:fixed;left:24px;top:50%;transform:translateY(-50%);
+    z-index:26;display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+    transition:opacity .4s ease;}
+  #batteryDock .plabel{font-family:var(--font-mono);font-size:9px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--fg-soft);
+    transition:color .5s;}
+  #batteryDock .val{font-family:var(--font-mono);font-size:10px;
+    color:var(--fg);font-variant-numeric:tabular-nums;}
+  #batteryDock input[type=range]{-webkit-appearance:none;appearance:none;
+    width:150px;height:4px;border-radius:999px;background:var(--hair);
+    cursor:pointer;outline:none;}
+  #batteryDock input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+    appearance:none;width:14px;height:14px;border-radius:50%;background:var(--fg);
+    cursor:pointer;}
+  #batteryDock input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;
+    border-radius:50%;background:var(--fg);cursor:pointer;}
+  @media (max-width:720px){ #batteryDock{left:14px;} }
   /* the dock is a design tool, not part of the story — hide it in the game */
   @media (max-width:720px){
     /* ★ the rail relocates to a full-width strip at bottom:16px on narrow
@@ -391,7 +427,8 @@
   /* ---- hide all story chrome once the race is live ---- */
   body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
   body.playing #heroTitle,body.playing #grain,body.playing #themeToggle,
-  body.playing #paletteDock,body.playing #creditsDock{display:none;}
+  body.playing #paletteDock,body.playing #creditsDock,
+  body.playing #batteryDock{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -431,36 +468,11 @@
     mask-image:linear-gradient(to top,black 0%,transparent 100%);}
 
   /* ============ HUD ============ */
+  /* The race HUD is display:none until the game actually starts. An earlier
+     revision ghosted it up behind the finale as a "the game is waiting"
+     preview; that was removed — the closing frame is the road, the statement
+     and the car, with no in-game dashboard hovering over them. */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
-  /* --- HUD preview: the game, visibly waiting -----------------------------
-     Scene 4 ends by ghosting the race chrome up behind the finale so the
-     transition into the game reads as a cut to something already there rather
-     than as a UI appearing from nowhere.
-     ★ IT MUST OUT-SPECIFY body.hero-phase, which hides #hud with BOTH
-       display:none and visibility:hidden (see the hero-phase rule up top) —
-       and the preview runs while hero-phase is still on, so both have to be
-       undone here or nothing shows.
-     ★ THE PREVIEW IS NOT THE LIVE HUD. --hudGhost caps it well under 1, the
-       whole panel stays pointer-events:none, and the two controls that would
-       be misleading if you could see but not use them (pause, the touch pad)
-       are hidden outright. Game.reset() drops .hud-preview when the race
-       actually starts, so the two states can never overlap. */
-  body.hud-preview #hud,body.hero-phase.hud-preview #hud{
-    display:block;visibility:visible;opacity:var(--hudGhost,0);
-    pointer-events:none;transition:none;}
-  body.hud-preview #pauseBtn,body.hud-preview #touch,
-  body.hud-preview #minimap{display:none;}
-  /* ★ RE-TINT IT. Every HUD colour is a GAME token (--ink is #3A2E22, chosen
-     against the circuit's sand) and the story's ground is near-black navy. At
-     35 % opacity dark-brown-on-dark-navy is not "ghosted", it is gone — the
-     preview rendered as a completely empty overlay. The story's own --fg is
-     already luminance-picked against the live scheme, so it is the right
-     source here and it follows a palette switch for free. */
-  body.hud-preview #stageTag,body.hud-preview #timer,body.hud-preview #posTag,
-  body.hud-preview #lapTag,body.hud-preview #speedo,body.hud-preview #battKwh,
-  body.hud-preview #battPct{color:var(--fg);}
-  body.hud-preview #battBar{border-color:var(--fg);}
-  body.playing #hud{opacity:1;}
   #stageTag{position:absolute;top:26px;left:34px;font-size:12px;letter-spacing:5px;
     color:var(--ink);opacity:.65;}
   #timer{position:absolute;top:22px;left:50%;transform:translateX(-50%);
@@ -532,35 +544,19 @@
      scroll instead of smoothing it — the value is already continuous. */
   #startWrap .btn:not(.ghost){background:var(--accent);color:var(--ground);}
   #startWrap .btn:not(.ghost):hover{background:var(--paper);}
-  /* --- the ask, pulsing --------------------------------------------------
-     The storyboard wants a bold glowing button below the starting-line text —
-     and the starting-line text is the road lettering in the 3D scene, which
-     #startWrap already sits under in screen space.
-     ★ The pulse animates BOX-SHADOW ONLY. --accent is rewritten from the
-       scroll on every frame it changes (see the note above), so animating or
-       transitioning `background` here would fight the scroll rather than
-       decorate it. box-shadow is not scroll-driven, so it is free to run on
-       its own clock.
-     ★ color-mix keeps the glow tied to --accent, so at p=1 the halo is the
-       fully-charged colour — the button is literally the state of charge the
-       whole page has been filling. */
-  @keyframes investPulse{
-    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent),
-                       0 0 22px 4px color-mix(in srgb,var(--accent) 30%,transparent);}
-    50%    {box-shadow:0 0 0 10px transparent,
-                       0 0 46px 12px color-mix(in srgb,var(--accent) 55%,transparent);}
-  }
-  #startWrap.on #investBtn{animation:investPulse 1.9s ease-in-out infinite;
-    font-size:20px;letter-spacing:7px;padding:19px 62px;}
-  @media (prefers-reduced-motion:reduce){
-    #startWrap.on #investBtn{animation:none;
-      box-shadow:0 0 26px 6px color-mix(in srgb,var(--accent) 34%,transparent);}
-  }
-  /* the ask is filled and charged; entering the lab is the quieter second
-     action, so it borrows the existing ghost treatment rather than a new one */
-  #startWrap .btn.ghost{color:var(--fg);border-color:var(--fg);}
+  /* --- the CTA is deliberately UNDERSTATED (item 14) ---------------------
+     The finale's job is the huge statement on the road and the car on the
+     grid; the buttons stay visible and usable but must not compete with that.
+     So: no pulse, standard .btn metrics, and both buttons stepped DOWN in size
+     with a slightly muted fill. The row also sinks a little into the frame so
+     the composition reads first and the action reads second.
+     ★ Still no transition on background — --accent is rewritten per frame from
+       the scroll (see the note above), so any ease would lag it. */
+  #startWrap .btn{font-size:14px;letter-spacing:4px;padding:12px 34px;}
+  #startWrap .btn:not(.ghost){opacity:.94;}
+  #startWrap .btn.ghost{color:var(--fg);border-color:var(--fg);border-width:2px;}
   #startWrap .btn.ghost:hover{color:var(--accent);border-color:var(--accent);}
-  #startWrap .ctaRow{display:flex;gap:16px;align-items:center;justify-content:center;
+  #startWrap .ctaRow{display:flex;gap:14px;align-items:center;justify-content:center;
     flex-wrap:wrap;}
 
   #countdown{display:none;background:transparent;pointer-events:none;}
@@ -710,6 +706,15 @@
   <div class="pals" id="palList"></div>
 </div>
 
+<!-- battery X position: a design tuning control (temporary). Once a value is
+     chosen it is baked into BATTERY_X and this block is removed. -->
+<div id="batteryDock">
+  <div class="plabel">Battery X</div>
+  <input id="batteryX" type="range" min="-2" max="2" step="0.02" value="0"
+         aria-label="Battery X position">
+  <div class="val" id="batteryXVal">0.00</div>
+</div>
+
 <!-- credits: bottom-left, reveal on hover (desktop) / tap (mobile).
      The Sketchfab URLs are dropped from the visible text but survive as the
      hrefs on the two model names — CC BY 4.0 asks for visible authorship +
@@ -753,8 +758,8 @@
       <!-- TODO: point at the real deck / data room / investor form -->
       <a class="btn" id="investBtn" href="#">INVEST IN KASI</a>
       <!-- keeps the id: the game state machine binds #startBtn, and the match
-           cut into the race depends on it -->
-      <button class="btn ghost" id="startBtn">RUN THE LAB</button>
+           cut into the race depends on it. Label only is renamed. -->
+      <button class="btn ghost" id="startBtn">START RACE</button>
     </div>
   </div>
 </section>
@@ -778,34 +783,47 @@
   <section class="chapter lead" id="s1" data-theme="cream" data-align="left"
            data-nav="The origin" style="--h:190vh">
     <div class="wrap">
-      <!-- The hero wordmark flies down and lands on this slot (see dockHeroLogo).
-           ★ NO .rv HERE, DELIBERATELY. .rv parks an element at opacity 0 /
-             translateY(38px) until its observer fires. This <img> is the flight
-             TARGET: the dock measures its rect to know where to land. With .rv
-             on it the mark flew to a slot 38px below the real one and then the
-             slot slid out from under it mid-flight when the observer fired —
-             the "jump" at the end of the handoff. The dock handoff IS this
-             element's reveal; its siblings keep their .rv stagger. -->
-      <img class="kasi-mark" id="ch1Logo" alt="KASI">
-      <h2 class="h-big rv"><span class="mask"><span>KASI is a</span></span>
+      <!-- THE WORDMARK IS THE HEADLINE'S FIRST WORD. #ch1Logo is inline here,
+           in place of the word "KASI"; the hero mark flies down and lands
+           exactly on this slot (see dockHeroLogo), then hands over.
+           ★ NO .rv ON THE <img>, DELIBERATELY. .rv parks an element at opacity
+             0 / translateY(38px) until its observer fires. This <img> is the
+             flight TARGET: the dock measures its rect to know where to land.
+             With .rv on it the mark flew to a slot 38px below the real one and
+             the slot slid out mid-flight — the handoff "jump".
+           ★ THE <h2> USES .rv-maskonly, NOT plain .rv. Two reasons, both about
+             the logo now living inside it: a .rv opacity fade would hide the
+             docked logo until the observer fires, and a .rv translateY would
+             make the heading a TRANSFORMED ANCESTOR of the dock target, which
+             is precisely what measureDock() must not have. .rv-maskonly keeps
+             the heading (and the logo) fully visible and untransformed; the
+             .mask clips carry the text's entrance instead. -->
+      <h2 class="h-big rv rv-maskonly">
+        <span class="hl-row"><img class="kasi-inline" id="ch1Logo" alt="KASI"><span
+          class="mask"><span>is a</span></span></span>
         <span class="mask"><span class="accent">battery company.</span></span></h2>
-      <p class="lede rv" style="--i:2">We're designing the cells that will power the continent's
-        grid — <b>tested in the most extreme conditions</b>.</p>
       <!-- the name, said and then defined: a supporting line under the claim,
-           not a beat of its own. It used to have its own chapter and its own
-           camera move, which is one more text moment than there are scenes. -->
-      <div class="ipa rv" style="--i:3">/ˈka·si/</div>
-      <p class="lede def rv" style="--i:4">from <b>lokasie</b> — the location, the township,
+           not a beat of its own. -->
+      <div class="ipa rv" style="--i:2">/ˈka·si/</div>
+      <p class="lede def rv" style="--i:3">from <b>lokasie</b> — the location, the township,
         the neighbourhood. The place that makes you.</p>
     </div>
   </section>
 
   <!-- ============ SCENE 2 — THE SCALE ============
-       Wordless, on purpose. The camera pulls back while one cell becomes a
-       hundred, ring by ring, and the bus bars light between them. The copy
-       stays out of the way because the multiplication IS the argument. -->
-  <section class="chapter runway" id="s2" data-theme="ink"
-           data-nav="The scale" style="--h:170vh"></section>
+       The camera pulls back while one cell becomes a hundred, ring by ring,
+       and the bus bars light between them. This used to be wordless; the copy
+       that names what is happening now rides ALONG with it — "the cells that
+       will power the continent's grid" lands on the frame where a hundred
+       cells finish forming a grid. The line was split out of scene 1, not
+       newly written. Left-aligned, low, so it clears the growing grid. -->
+  <section class="chapter" id="s2" data-theme="ink" data-align="left"
+           data-nav="The scale" style="--h:150vh">
+    <div class="wrap">
+      <p class="lede rv">We're designing the cells that will power the continent's
+        grid — <b>tested in the most extreme conditions</b>.</p>
+    </div>
+  </section>
 
   <!-- ============ SCENE 3 — THE CRUCIBLE ============
        "Built to break what we make." over the under-chassis shot: the camera
@@ -2668,16 +2686,15 @@ const Hero = (() => {
   const hRimB = new THREE.DirectionalLight(0xFFFFFF, 0);
   hRimB.position.set(55, 12, -40); hScene.add(hRimB);
   /* --- the backdrop: a dawn horizon in scene 1, a lit box by scene 3 --------
-     Parented to the camera and drawn first with depth off, so it is a painted
-     backing rather than geometry in the world — it can never be flown past.
+     A full-screen quad drawn first with depth off — a painted backing rather
+     than geometry in the world, so it can never be flown past. It sits over
+     hScene.background (the flat scene colour) and under everything else.
 
-     ★ IT MUST NOT CLAIM ALPHA. The ASCII flashlight (see renderHero) renders
-       the scene to a target with a transparent clear and uses the RESULT'S
-       ALPHA as the car mask. A full-screen mesh writing alpha=1 would make
-       every pixel "car" and the effect would convert the whole frame. Hence
-       NoBlending plus an explicit alpha of 0 in the shader: it paints colour
-       into the target and leaves the mask alone. renderHero's composite was
-       changed to match — read that note before touching either.
+     ★ It writes a SOLID alpha. An earlier version painted alpha 0 with
+       NoBlending because a two-pass ASCII post-effect used the frame's alpha as
+       a car-coverage mask; that effect is gone (see renderHero), so the mask
+       constraint is gone with it. Rendering straight to the screen, alpha 0
+       here would punch a transparent hole through to the page, so it is 1.0.
      ★ The ridge is a canvas alpha strip, not geometry: a few smoothed hills
        and two acacia crowns. It is a HINT of a landscape at the horizon, which
        is all the storyboard asks for, and it fades out by p≈0.54 because a
@@ -2747,8 +2764,8 @@ const Hero = (() => {
              low down, the way a room lit from its floor reads. The whole shift
              from dawn to this is what sells "we took it indoors". */
           vec3 lab = mix(uTop * 0.88, uTop * 1.22, smoothstep(0.70, 0.0, vUv.y));
-          // ★ alpha 0: paint colour, claim no coverage. See the note above.
-          gl_FragColor = vec4(mix(dawn, lab, uMix), 0.0);
+          // solid alpha: this is the opaque backing, not a mask. See the note above.
+          gl_FragColor = vec4(mix(dawn, lab, uMix), 1.0);
         }`,
       depthTest:false, depthWrite:false, blending:THREE.NoBlending,
     });
@@ -2874,20 +2891,26 @@ const Hero = (() => {
        silently ship Arial Black on the hero shot. */
   /* ★ All four z values carry the same +DRIVE_DIST offset the start line does,
      so the lettering stays beyond the line once the car has driven up to it. */
+  /* ★ ENLARGED so the sentence is the PRIMARY element of the finale (item 11).
+     Every plane is ~1.5× its old size and the block is pulled nearer the car,
+     so the words fill the frame instead of sitting as a caption on the horizon.
+     The w/d ratio stays ~2.6 — the anamorphic squeeze that keeps the glyphs
+     upright from this shallow camera — and the nearest line's z stays past
+     SL_Z (DRIVE_DIST+6) so it never collides with the start line. */
   const ROAD_LINES = [
-    { text:'THE RACE',      z:DRIVE_DIST + 31, w:21, d:8 },   // farthest — top of frame, reads first
-    { text:"FOR AFRICA'S",  z:DRIVE_DIST + 23, w:18, d:7 },
-    { text:'ENERGY FUTURE', z:DRIVE_DIST + 16, w:15, d:6 },
-    { text:'HAS STARTED.',  z:DRIVE_DIST + 10, w:12, d:5 },   // nearest — bottom of frame; the
+    { text:'THE RACE',      z:DRIVE_DIST + 32, w:33, d:13 },  // farthest — top of frame, reads first
+    { text:"FOR AFRICA'S",  z:DRIVE_DIST + 24, w:29, d:11 },
+    { text:'ENERGY FUTURE', z:DRIVE_DIST + 16, w:25, d:10 },
+    { text:'HAS STARTED.',  z:DRIVE_DIST + 9,  w:21, d:8  },  // nearest — bottom of frame; the
                                                  // full stop closes the sentence,
-                                                 // matching the .sr-only copy in #ch3
+                                                 // matching the .sr-only copy in #s4
   ];
   const roadTextMats = [];
   ROAD_LINES.forEach((L, i) => {
     const cv = document.createElement('canvas');
-    cv.width = 1024; cv.height = 256;
+    cv.width = 1536; cv.height = 384;   // higher-res bake: the planes are big now
     const cx = cv.getContext('2d');
-    const FIT = cv.width - 24;          // leave a little bleed either side
+    const FIT = cv.width - 36;          // leave a little bleed either side
     function bake(){
       cx.clearRect(0, 0, cv.width, cv.height);
       cx.fillStyle = '#F3EFF7';
@@ -2900,14 +2923,14 @@ const Hero = (() => {
          lines are untouched and glyph scale stays uniform down the block. If a
          line ever does shrink visibly, raise that line's `d` (and its `w` with
          it, keeping the ~2.5 ratio) rather than widening the canvas. */
-      let px = 150;
+      let px = 230;
       cx.font = "800 " + px + "px 'Unbounded','Arial Black',sans-serif";
       const measured = cx.measureText(L.text).width;
       if (measured > FIT) {
         px = Math.floor(px * FIT / measured);
         cx.font = "800 " + px + "px 'Unbounded','Arial Black',sans-serif";
       }
-      cx.fillText(L.text, cv.width / 2, cv.height / 2 + 6);
+      cx.fillText(L.text, cv.width / 2, cv.height / 2 + 9);
     }
     bake();
     const tex = new THREE.CanvasTexture(cv);
@@ -2935,6 +2958,80 @@ const Hero = (() => {
     envGroup.add(m);
     roadTextMats.push(mat);
   });
+
+  /* --- the road as a storytelling element (item 13) ------------------------
+     The tarmac in front of the car stops being a flat dark plane and becomes
+     the thing that carries the eye down to the statement: glowing longitudinal
+     streaks that (in perspective, from this low camera) converge on the
+     horizon, plus a soft light beam that brightens the road under the text.
+     Both are ADDITIVE and tinted from the live stop, so they read as light on
+     the road and follow a palette switch — the same treatment the energy grid
+     uses, for the same reason (the ground is near-black, so additive = glow).
+
+     ★ ONE DRAW CALL for the streaks: a single InstancedMesh of long thin
+       planes, brightness per instance on instanceColor (edges brightest). */
+  const LANE_X = [0, -4.6, 4.6, -9.2, 9.2, -CFG.roadHalf + 0.4, CFG.roadHalf - 0.4];
+  const LANE_B = [0.46, 0.38, 0.38, 0.38, 0.38, 0.82, 0.82];  // per-lane brightness
+  const LANE_LEN = 54, LANE_Z0 = DRIVE_DIST - 6;              // from just behind the car…
+  let roadLanes = null, roadLaneMat = null;
+  {
+    const geo = new THREE.PlaneGeometry(1, LANE_LEN);
+    geo.rotateX(-Math.PI / 2);                                 // flat, running along +Z
+    roadLaneMat = new THREE.MeshBasicMaterial({ transparent:true, depthWrite:false,
+      blending:THREE.AdditiveBlending, color:0xffffff, opacity:1 });
+    roadLanes = new THREE.InstancedMesh(geo, roadLaneMat, LANE_X.length);
+    roadLanes.frustumCulled = false; roadLanes.renderOrder = 1;
+    roadLanes.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(LANE_X.length * 3), 3);
+    const mm = new THREE.Matrix4(), qq = new THREE.Quaternion();
+    const pp = new THREE.Vector3(), ss = new THREE.Vector3();
+    LANE_X.forEach((x, i) => {
+      const isEdge = i >= 5;
+      pp.set(x, 0.018, LANE_Z0 + LANE_LEN / 2);
+      ss.set(isEdge ? 0.28 : 0.14, 1, 1);                     // edge lines a touch wider
+      mm.compose(pp, qq, ss);
+      roadLanes.setMatrixAt(i, mm);
+      const bg = LANE_B[i];
+      roadLanes.instanceColor.array[i*3] = roadLanes.instanceColor.array[i*3+1] =
+        roadLanes.instanceColor.array[i*3+2] = bg;
+    });
+    roadLanes.instanceMatrix.needsUpdate = true;
+    envGroup.add(roadLanes);
+  }
+  /* The light beam: a wide plane textured with a gradient that is dark at the
+     car end and brightens into a band under the lettering, so the road visibly
+     "leads" to the words. Additive + tinted like the streaks. */
+  let roadBeamMat = null;
+  {
+    const bc = document.createElement('canvas'); bc.width = 16; bc.height = 256;
+    const bx = bc.getContext('2d');
+    const g = bx.createLinearGradient(0, 256, 0, 0);          // v=0 (near car) → v=1 (far)
+    g.addColorStop(0.00, 'rgba(0,0,0,0)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0.10)');
+    g.addColorStop(0.72, 'rgba(255,255,255,0.42)');           // bright under the text
+    g.addColorStop(0.90, 'rgba(255,255,255,0.12)');
+    g.addColorStop(1.00, 'rgba(0,0,0,0)');
+    bx.fillStyle = g; bx.fillRect(0, 0, 16, 256);
+    const tex = new THREE.CanvasTexture(bc);
+    roadBeamMat = new THREE.MeshBasicMaterial({ map:tex, transparent:true,
+      depthWrite:false, blending:THREE.AdditiveBlending, color:0xffffff, opacity:1 });
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W * 0.92, LANE_LEN), roadBeamMat);
+    beam.rotation.set(-Math.PI / 2, 0, 0);
+    beam.position.set(0, 0.014, LANE_Z0 + LANE_LEN / 2);
+    beam.renderOrder = 0; beam.frustumCulled = false;
+    envGroup.add(beam);
+  }
+  const _roadCol = new THREE.Color();
+  /* Fade the road treatment up WITH the lettering (same distance cue) and tint
+     both from the live stop each frame. Runs a touch ahead of the text so the
+     road lights the way to the words rather than arriving with them. */
+  function revealRoad(pv, carZ){
+    const q = clamp01((carZ - 16) / 9);       // a bit earlier/wider than the text
+    const t = smoothstep(q);
+    stopAt(pv, _roadCol);
+    if (roadLaneMat) { roadLaneMat.color.copy(_roadCol); roadLaneMat.opacity = t; roadLanes.visible = t > 0.002; }
+    if (roadBeamMat) { roadBeamMat.color.copy(_roadCol); roadBeamMat.opacity = t * 0.9; }
+  }
 
   /* ★ GROUND AND START LINE FADE UP SEPARATELY. They used to share one
      revealEnv(t), which meant the grid was already lit under BEAT 2 ("Built to
@@ -3079,7 +3176,7 @@ const Hero = (() => {
     xray:0, scanY:-0.5,                    // hologram shell + assembly scan band
     linkGlow:0,                            // the energy grid between cells
     facility:0, ridge:1,                   // backdrop: dawn → testing-facility neon
-    smoke:0, hudGhost:0,
+    smoke:0,
   };
 
   /* {key, from, to, at, dur, ease}. `at`+`dur` are in p, so they read directly
@@ -3183,7 +3280,7 @@ const Hero = (() => {
 
     /* --- chrome ------------------------------------------------------------- */
     { key:'smoke',    from:0, to:1,    at:0.748, dur:0.007, ease:'none'       },
-    { key:'hudGhost', from:0, to:0.35, at:0.92,  dur:0.08,  ease:'power2.out' },
+
   ];
 
   /* Two readers over one table. `master` is PAUSED — progress() is a
@@ -3257,6 +3354,29 @@ const Hero = (() => {
   const CELL_H    = 0.22;                // ≈24 cm at this scene's 1 unit ≈ 1.1 m
   const CELL_PITCH = 0.13;               // model is 0.12 across → a 0.01 gap
   const PACK_N = 10;                     // the pack: 10 × 10
+
+  /* --- battery X offset: a design tuning control -------------------------
+     Slides the whole cell object (and its bus bars) along X during the build,
+     so the arrival/multiplication framing can be centred by eye. Because the
+     tumble rotates the InstancedMesh about its OWN origin, translating the
+     object moves the centre of rotation with it and the cell keeps spinning
+     about the new point — which is the whole ask.
+
+     ★ IT MUST RETURN TO 0 BEFORE THE PACK MERGES. applyPack() seats the grid
+       into the car's belly at a spot derived from CAR.box; an X offset still
+       applied there would seat the pack off-centre and drive it out through a
+       sidepod. batteryOffsetX() ramps to exactly 0 by p=0.55, before
+       PACK_MERGE_FROM (0.600), so the merge is unaffected.
+     ★ TEMPORARY. This is a tuning slider (#batteryDock); once a value is
+       chosen, inline it as the BATTERY_X default and delete the control. */
+  let BATTERY_X = (() => {
+    const v = parseFloat(localStorage.getItem('kasiBatteryX'));
+    return Number.isFinite(v) ? v : 0;
+  })();
+  function batteryOffsetX(pv){
+    // held through the build, ramped out over 0.40→0.55
+    return BATTERY_X * (1 - smoothstep(clamp01((pv - 0.40) / 0.15)));
+  }
 
   /* ★ AN EVEN GRID HAS NO CENTRE CELL, so one is nominated. CELL0 is the cell
        the page opens on — the single object in scene 1 — and the camera's
@@ -3415,20 +3535,48 @@ const Hero = (() => {
      INWARD along their own radial with a slight overshoot, which is what makes
      a grid look assembled rather than grown. */
   const easeSnap = HAS_GSAP ? gsap.parseEase('back.out(2.2)') : EASE['back.out2.2'];
+  /* --- the insertion wave: cells DISAPPEAR into the car (item 8) -----------
+     The whole cells object rises into the belly (applyPack), and as it does,
+     each cell shrinks to nothing so it reads as being INSTALLED rather than
+     seated under the car. The shrink is staggered by z, so the grid feeds into
+     the chassis from its leading edge — the "first layer reaches the car first"
+     reading — and by the time the merge completes every cell is gone, which is
+     what stops any battery poking up through the metal body (the camera is
+     under the chassis here, so a full-scale cell at the belly WOULD protrude).
+
+     ★ THE SHRINK IS FRONT-DELAYED so the pack RISES INTO the belly first and
+       only then vanishes — otherwise cells shrink away in open space below the
+       car and it reads as "the grid disappeared" rather than "the grid went
+       in". The first shrink starts at merge m=INS_DELAY (pack already ~a third
+       of the way up); the last cell finishes exactly at m=1 (p=0.685). Even the
+       trailing, still-full cells stay below the belly line while they rise —
+       checked against the hover height — so nothing protrudes.
+     ★ mz normalises z to 0 at the +Z (nose) end so that end enters first. Pure
+       in p, so it scrubs and reverses like everything else. */
+  const PACK_HALF_Z = (PACK_N - 1) / 2 * CELL_PITCH;   // 0.585
+  const INS_DELAY = 0.35, INS_STAG = 0.35, INS_W = 0.30;   // DELAY+STAG+W = 1
   function applyCells(pv){
     if (!cells) return;
     if (pv >= CELLS_HIDDEN_FROM) { cells.visible = false; if (links) links.visible = false; return; }
+    const mergeM = packMergeM(pv);
     let anyVisible = false;
     for (let i = 0; i < CELL_MAX; i++) {
       const s = cellSlots[i];
       const e = i === 0 ? 1 : clamp01((pv - s.t0) / CELL_W);
       cellReveal[i] = e;
-      if (e > 0.001) anyVisible = true;
       const k = easeSnap(e);
+      // insertion: leading (+Z) cells vanish first as the pack seats
+      let ins = 0;
+      if (mergeM > INS_DELAY) {
+        const mz = (PACK_HALF_Z - s.z) / (2 * PACK_HALF_Z);   // 0 at nose end
+        ins = clamp01((mergeM - INS_DELAY - mz * INS_STAG) / INS_W);
+      }
+      const sc = e * (1 - ins);                 // reveal in, then insertion out
+      if (sc > 0.001) anyVisible = true;
       // start 0.35 out along the radial and 0.12 high, arrive in the slot
       const back = (1 - k) * 0.35 / s.d;
       _cellP.set(s.x + s.nx * back, (1 - k) * 0.12, s.z + s.nz * back);
-      _cellS.set(e, e, e);
+      _cellS.set(sc, sc, sc);
       _cellM.compose(_cellP, _cellQ, _cellS);
       cells.setMatrixAt(i, _cellM);
     }
@@ -3548,6 +3696,7 @@ const Hero = (() => {
       carMats.push(o.material);
     });
     buildXray();
+    buildWheelSpokes();
   }
 
   /* --- the x-ray: a SEPARATE additive shell, not a transparency setting -----
@@ -3649,6 +3798,88 @@ const Hero = (() => {
     }
   }
   revealCar(0);                  // the page opens on a cell, not a car
+
+  /* --- spinning wheel spokes (item 9) --------------------------------------
+     The GLB's four tyres are ONE mesh and its rims are two more, so a wheel
+     cannot be spun by rotating a node — that would swing all four around the
+     car's centre. Instead a spoked disc is overlaid on each wheel's outboard
+     face and THOSE are spun, which is what makes the burnout read and gives the
+     tyre smoke something to be caused by.
+
+     ★ REUSES makeTyreStripes's wheel measurement. Same quadrant split of the
+       single tyre mesh (±X, front/rear Z) to recover each wheel's centre,
+       radius and outboard face — measured in CAR-LOCAL space (the tyre matrix
+       relative to `car`) so the discs attach correctly whatever the car's live
+       transform is.
+     ★ Hero car ONLY: built here, not in buildGlbCar, so the AI field in the
+       game is untouched. Gated on CAR.seq like the x-ray, so it rebuilds when
+       the GLB swaps in over the procedural placeholder.
+     ★ angle = carZ / radius — a pure function of p, so it scrubs and reverses,
+       and it is automatically in step with the smoke (both read carZ). */
+  const spokeMat = new THREE.MeshBasicMaterial({ color:0xF2F2F0,
+    transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false });
+  function makeSpokeDisc(r){
+    // bars radiating in the Y-Z plane (normal +X), plus a thin rim, so a
+    // rotation about X spins them in their own plane like real spokes
+    const g = new THREE.Group();
+    const N = 6, inner = r * 0.10, outer = r * 0.58, w = r * 0.10;
+    for (let i = 0; i < N; i++) {
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(outer - inner, w), spokeMat);
+      const a = (i / N) * Math.PI * 2;
+      bar.position.set(0, Math.cos(a) * (inner + outer) / 2, Math.sin(a) * (inner + outer) / 2);
+      bar.rotation.set(a, Math.PI / 2, 0);     // lie in Y-Z, aligned along the radial
+      g.add(bar);
+    }
+    const rim = new THREE.Mesh(new THREE.RingGeometry(outer * 0.92, outer, 24), spokeMat);
+    rim.rotation.y = Math.PI / 2;              // face ±X
+    g.add(rim);
+    return g;
+  }
+  let spokeSeq = -1;
+  const spokeDiscs = [];
+  const _relM = new THREE.Matrix4();
+  function buildWheelSpokes(){
+    if (spokeSeq === CAR.seq) return;
+    spokeSeq = CAR.seq;
+    for (const d of spokeDiscs) if (d.disc.parent) d.disc.parent.remove(d.disc);
+    spokeDiscs.length = 0;
+    let tyres = null;
+    car.traverse(o => { if (o.isMesh && o.name === TYRE_MESH) tyres = o; });
+    if (!tyres) return;                        // procedural placeholder — no spokes yet
+    car.updateWorldMatrix(true, true);
+    _relM.copy(car.matrixWorld).invert().multiply(tyres.matrixWorld);  // tyre → car-local
+    const pos = tyres.geometry.attributes.position, v = new THREE.Vector3(), q = {};
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(_relM);
+      const k = (v.x >= 0 ? 'R' : 'L') + (v.z >= 0 ? 'F' : 'B');
+      const c = q[k] || (q[k] = { minX:1e9, maxX:-1e9, minY:1e9, maxY:-1e9, minZ:1e9, maxZ:-1e9 });
+      if (v.x < c.minX) c.minX = v.x;  if (v.x > c.maxX) c.maxX = v.x;
+      if (v.y < c.minY) c.minY = v.y;  if (v.y > c.maxY) c.maxY = v.y;
+      if (v.z < c.minZ) c.minZ = v.z;  if (v.z > c.maxZ) c.maxZ = v.z;
+    }
+    for (const k of Object.keys(q)) {
+      const c = q[k]; const r = (c.maxY - c.minY) / 2;
+      if (!(r > 0.05)) continue;               // not a wheel-shaped cluster
+      const cy = (c.minY + c.maxY) / 2, cz = (c.minZ + c.maxZ) / 2, right = k[0] === 'R';
+      const disc = makeSpokeDisc(r);
+      disc.position.set((right ? c.maxX : c.minX) + (right ? 0.012 : -0.012), cy, cz);
+      disc.visible = false;
+      car.add(disc);
+      spokeDiscs.push({ disc, r });
+    }
+  }
+  /* spin + reveal. Visible only once the car is solid and rolling, so the
+     spokes never sit on the x-ray hologram; opacity fades in over the launch. */
+  function spinWheels(){
+    if (!spokeDiscs.length) return;
+    const on = ST.carVis > 0.85;
+    const op = clamp01((ST.carVis - 0.85) / 0.15) * 0.85;
+    for (const d of spokeDiscs) {
+      d.disc.visible = on;
+      d.disc.rotation.x = ST.carZ / d.r;       // roll: pure in carZ, so in sync with smoke
+    }
+    spokeMat.opacity = op;
+  }
 
 
   /* --- the camera ladder: seven control points across scenes 1-3 -----------
@@ -3844,8 +4075,7 @@ const Hero = (() => {
   const _accentCol = new THREE.Color();
   const _qUp = new THREE.Quaternion();     // identity — the cells' resting pose
   let lastStopHex = '';
-  let lastPct = -1, lastGhost = '';        // memos for the per-frame chrome writes
-  const hudEl = document.getElementById('hud');
+  let lastPct = -1, lastRailOp = '';       // memos for the per-frame chrome writes
 
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -3970,16 +4200,22 @@ const Hero = (() => {
        the bus bars are additive and would otherwise glow through the floor
        they have just been tucked under. */
   const PACK_MERGE_FROM = 0.600, PACK_MERGE_BY = 0.685;
+  // shared by applyPack (group translation) and applyCells (per-cell insertion)
+  const packMergeM = (pv) =>
+    smoothstep(clamp01((pv - PACK_MERGE_FROM) / (PACK_MERGE_BY - PACK_MERGE_FROM)));
   const _packL = new THREE.Vector3();
   function applyPack(pv){
     if (!cells) return;
-    const m = smoothstep(clamp01((pv - PACK_MERGE_FROM) / (PACK_MERGE_BY - PACK_MERGE_FROM)));
+    const bx = batteryOffsetX(pv);         // tuning offset, 0 by the time we merge
+    const m = packMergeM(pv);
     // ★ explicit reset, not just an early return — scrubbing backwards past
-    //   the merge must put the pack back at the origin, or it stays welded to
-    //   a car that has since driven away.
-    if (m <= 0) { cells.position.set(0, 0, 0); if (links) links.position.set(0,0,0); return; }
+    //   the merge must put the pack back at its resting X, or it stays welded
+    //   to a car that has since driven away.
+    if (m <= 0) { cells.position.set(bx, 0, 0); if (links) links.position.set(bx, 0, 0); return; }
     packAnchor(_packL).applyQuaternion(car.quaternion).add(car.position);
-    cells.position.set(0, 0, 0).lerp(_packL, m);
+    // lerp FROM the offset resting pose; bx is ~0 here (ramped out by 0.55), so
+    // the merge target is unaffected, but this stays correct if the ramp moves
+    cells.position.set(bx, 0, 0).lerp(_packL, m);
     cells.quaternion.copy(_qUp).slerp(car.quaternion, m);
     // the bus bars ride with the cells they connect
     if (links) { links.position.copy(cells.position); links.quaternion.copy(cells.quaternion); }
@@ -4128,148 +4364,16 @@ const Hero = (() => {
   addEventListener('resize', heroViewport);
   addEventListener('resize', remeasureLayout);   // logo is vw-sized and the document reflows
 
-  /* =====================================================================
-     ASCII "revealer flashlight" post-effect (desktop hover only).
-     Two-pass: hScene → offscreen RT → fullscreen shader that turns a soft
-     circle around the cursor into complementary-coloured monospace glyphs,
-     feathered at the edge; everything else is the normal 3D render.
-     ===================================================================== */
-  const asciiOn = matchMedia('(pointer:fine)').matches;   // any device with a mouse
-  let renderHero = () => renderer.render(hScene, hCam);   // default path
-
-  if (asciiOn) {
-    // --- glyph atlas: density string baked into a horizontal strip ---
-    const DENSITY = 'Ñ@#W$9876543210?!abc;:+=-,._ ';
-    const N = DENSITY.length, GLY = 48;
-    const ac = document.createElement('canvas');
-    ac.width = GLY * N; ac.height = GLY;
-    const actx = ac.getContext('2d');
-    function drawAtlas(){
-      actx.clearRect(0, 0, ac.width, ac.height);
-      actx.fillStyle = '#fff';
-      actx.font = '700 ' + Math.round(GLY * 0.82) + "px 'IBM Plex Mono', ui-monospace, monospace";
-      actx.textAlign = 'center'; actx.textBaseline = 'middle';
-      for (let i = 0; i < N; i++) actx.fillText(DENSITY[i], i * GLY + GLY / 2, GLY / 2 + 1);
-    }
-    drawAtlas();
-    const atlasTex = new THREE.CanvasTexture(ac);
-    atlasTex.minFilter = THREE.LinearFilter; atlasTex.magFilter = THREE.LinearFilter;
-    atlasTex.generateMipmaps = false;
-    atlasTex.wrapS = atlasTex.wrapT = THREE.ClampToEdgeWrapping;
-    // rebake once the monospace webfont is ready so glyph shapes are correct
-    if (document.fonts && document.fonts.ready)
-      document.fonts.ready.then(() => { drawAtlas(); atlasTex.needsUpdate = true; });
-
-    // --- offscreen render target sized to the drawing buffer ---
-    const dbs = new THREE.Vector2();
-    renderer.getDrawingBufferSize(dbs);
-    const heroRT = new THREE.WebGLRenderTarget(dbs.x, dbs.y,
-      { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat });
-
-    // --- fullscreen quad + ASCII shader ---
-    const uniforms = {
-      u_scene:  { value: heroRT.texture },
-      u_atlas:  { value: atlasTex },
-      u_res:    { value: new THREE.Vector2(dbs.x, dbs.y) },
-      u_cell:   { value: 10 * renderer.getPixelRatio() },
-      u_count:  { value: N },
-      u_mouse:  { value: new THREE.Vector2(-1e4, -1e4) },
-      u_radius: { value: 0 },
-      u_feather:{ value: 0 },
-      u_bg:     { value: new THREE.Color(0xffffff) },
-    };
-    const asciiMat = new THREE.ShaderMaterial({
-      uniforms,
-      vertexShader: `
-        varying vec2 vUv;
-        void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-      fragmentShader: `
-        precision highp float;
-        varying vec2 vUv;
-        uniform sampler2D u_scene, u_atlas;
-        uniform vec2 u_res, u_mouse;
-        uniform vec3 u_bg;
-        uniform float u_cell, u_count, u_radius, u_feather;
-        float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
-        void main(){
-          vec2 frag = vUv * u_res;
-          /* ★ u_scene now holds the WHOLE frame, backdrop included, because the
-             backdrop mesh paints colour into the target while deliberately
-             writing alpha 0 (see the note on backdropMat). Alpha is therefore
-             still purely the car's coverage — which is all that carMask below
-             ever wanted — and there is nothing left to rebuild here. The old
-             mix(u_bg, …) reconstructed a flat background that no longer exists;
-             keeping it would have painted over the horizon.
-             ★ NO BACKTICKS IN THIS COMMENT. It lives inside a JS template
-               literal, so one would close the shader source mid-string. */
-          vec4 hi = texture2D(u_scene, vUv);
-          vec3 normal = hi.rgb;
-          vec2 cellOrigin = floor(frag / u_cell) * u_cell;
-          vec2 cellCenter = (cellOrigin + 0.5 * u_cell) / u_res;
-          vec4 cell = texture2D(u_scene, cellCenter);
-          vec3 cellCol = cell.rgb;
-          float carMask = cell.a;                             // 1 on car, 0 on background
-          float b = luma(cellCol);
-          float idx = floor(clamp(1.0 - b, 0.0, 0.999) * u_count);
-          vec2 local = fract(frag / u_cell);
-          float glyph = texture2D(u_atlas, vec2((idx + local.x) / u_count, local.y)).r;
-          vec3 shade = clamp(cellCol * 0.62, 0.0, 1.0);       // darker shade, same hue
-          vec3 ascii = mix(vec3(1.0), shade, glyph);          // glyph on a white cell
-          float d = distance(frag, u_mouse);
-          float ring = 1.0 - smoothstep(u_radius - u_feather, u_radius, d);
-          float m = ring * carMask;                           // only convert the car itself
-          gl_FragColor = vec4(mix(normal, ascii, m), 1.0);
-        }`,
-      depthTest: false, depthWrite: false,
-    });
-    const postScene = new THREE.Scene();
-    const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), asciiMat));
-
-    // --- cursor tracking + flashlight grow/shrink ---
-    const mTarget = new THREE.Vector2(-1e4, -1e4);
-    let radTarget = 0;
-    const pr = () => renderer.getPixelRatio();
-    addEventListener('pointermove', e => {
-      mTarget.set(e.clientX * pr(), (innerHeight - e.clientY) * pr());   // y-flip to UV space
-      radTarget = 0.18 * u_resMin();
-    });
-    document.addEventListener('mouseleave', () => { radTarget = 0; });
-    addEventListener('blur', () => { radTarget = 0; });
-    function u_resMin(){ return Math.min(uniforms.u_res.value.x, uniforms.u_res.value.y); }
-
-    function resizeAscii(){
-      renderer.getDrawingBufferSize(dbs);
-      heroRT.setSize(dbs.x, dbs.y);
-      uniforms.u_res.value.set(dbs.x, dbs.y);
-      uniforms.u_cell.value = 10 * renderer.getPixelRatio();
-    }
-    addEventListener('resize', resizeAscii);
-
-    renderHero = () => {
-      // effect only lives at the very top; sleeps past 25% of one screen scrolled
-      const gate = 1 - clamp01(scrollY / (innerHeight * 0.25));
-      /* ★ Rate-independent, like the scroll damper. These were per-frame
-         constants (0.35 / 0.15), which means the flashlight chased twice as
-         fast on a 120 Hz panel and stalled on a dropped frame. The lambdas are
-         the 60 fps equivalents: -ln(1-k)*60. */
-      uniforms.u_mouse.value.lerp(mTarget, 1 - Math.exp(-frameDt * 26));
-      uniforms.u_radius.value = damp(uniforms.u_radius.value, radTarget * gate, 10, frameDt);
-      uniforms.u_feather.value = uniforms.u_radius.value * 0.45;
-      if (uniforms.u_radius.value < 0.5) { renderer.render(hScene, hCam); return; }  // asleep → plain render
-      // render the car on a transparent bg so its coverage lands in RT alpha,
-      // and hand the shader the real bg colour to rebuild the frame around it
-      const savedBg = hScene.background;
-      uniforms.u_bg.value.copy(savedBg);
-      hScene.background = null;
-      renderer.setClearColor(0x000000, 0);
-      renderer.setRenderTarget(heroRT);
-      renderer.render(hScene, hCam);
-      renderer.setRenderTarget(null);
-      hScene.background = savedBg;
-      renderer.render(postScene, postCam);
-    };
-  }
+  /* The hero scene renders straight to the screen. There used to be a
+     two-pass ASCII "flashlight" post-effect here that turned whatever the
+     cursor hovered over into monospace glyphs; it was removed because the
+     battery must not react to the mouse merely passing over it. renderHero
+     is the plain single-pass render again.
+     ★ This is why the backdrop shader can be a normal opaque material now.
+       While the effect existed the backdrop had to paint alpha 0 with
+       NoBlending so it would not spoil the effect’s car-coverage mask; with
+       the effect gone that constraint is gone too. */
+  const renderHero = () => renderer.render(hScene, hCam);
 
   function frame(){
     requestAnimationFrame(frame);
@@ -4403,6 +4507,7 @@ const Hero = (() => {
        the shell and takes the solid fade as its argument, so both layers are
        driven from the one timeline. */
     revealCar(ST.carVis);
+    spinWheels();               // wheels roll with carZ once the car is solid
 
     /* The contact shadow is the only altitude cue before the ground arrives.
        It tracks the car in x/z and shrinks and fades with height, so it reads
@@ -4427,6 +4532,7 @@ const Hero = (() => {
          free — it was computed for the car a few lines up. */
     revealGround(clamp01((p - 0.600) / 0.07));
     revealStartLine(p, _flyPos.z);
+    revealRoad(p, _flyPos.z);
     revealRoadText(p, _flyPos.z);
 
     // tyre smoke off the launch and the brake — the one dt-free particle pool
@@ -4464,33 +4570,12 @@ const Hero = (() => {
       railPct.textContent = pct + '%';
       lastPct = pct;
     }
-    /* The race HUD ghosts up behind the finale, so the game reads as waiting
-       rather than as something that appears out of nowhere on START.
-       ★ Memoised and quantised like the two writes above — this is a style
-         property on a fixed overlay, so an unguarded per-frame write costs a
-         composite every frame for the last twelfth of the page.
-       ★ The PREVIEW state is not the LIVE state. body.hud-preview shows the
-         panel at low opacity with pointer-events off; Game.reset() clears the
-         class when the race actually starts. Never let the two coexist — a
-         half-transparent HUD you cannot click is a bug report waiting to
-         happen. */
-    const ghost = ST.hudGhost.toFixed(3);
-    if (ghost !== lastGhost) {
-      const on = ST.hudGhost > 0.002;
-      document.body.classList.toggle('hud-preview', on);
-      document.documentElement.style.setProperty('--hudGhost', ghost);
-      /* ★ THE DISPLAY HAS TO BE WRITTEN INLINE, not left to the class. Game's
-         state machine sets ui.hud.style.display directly when it leaves the
-         race, and an inline declaration beats any stylesheet selector no matter
-         how specific — so the class alone produced a HUD that was visible,
-         correctly tinted, at the right opacity, and display:none. Writing the
-         same property from here competes on equal terms; clearing it to ''
-         hands the element back to the stylesheet, where #hud is display:none
-         anyway. The alternative was !important, which would then have had to
-         win against the LIVE race too. */
-      hudEl.style.display = on ? 'block' : '';
-      lastGhost = ghost;
-    }
+    /* The charge rail retires into the finale. It is a scroll indicator, and
+       the closing frame — road, statement, car — is the one place the page
+       wants no chrome at the edges (item 10). Fades out over the last stretch;
+       memoised so it is not a per-frame style write. */
+    const railOp = (p > 0.90 ? clamp01(1 - (p - 0.90) / 0.06) : 1).toFixed(3);
+    if (railOp !== lastRailOp) { chargeRail.style.opacity = railOp; lastRailOp = railOp; }
     // ★ pTarget, not p — the dock tracks the RAW scroller (see dockHeroLogo).
     dockHeroLogo(pTarget);
 
@@ -4585,10 +4670,37 @@ const Hero = (() => {
       })(),
       carShown: Math.max(ST.xray, ST.carVis),
       cells: cells ? cells.visible : null,
+      cellsX: cells ? cells.position.x : null,
       cellsUp: cellReveal.reduce((a,b) => a + (b > 0.5 ? 1 : 0), 0),
-      links: links ? links.visible : null };
+      /* highest world-Y among visible cell instances — for the "no cell pokes
+         above the car floor during the merge" check (item 8). */
+      cellTopY: (() => {
+        if (!cells) return null;
+        const m = new THREE.Matrix4(), v = new THREE.Vector3(); let top = -1e9;
+        for (let i = 0; i < CELL_MAX; i++){
+          if (cellReveal[i] < 0.02) continue;
+          cells.getMatrixAt(i, m); v.setFromMatrixPosition(m).applyMatrix4(cells.matrixWorld);
+          const sy = m.elements[5];               // instance Y scale — 0 once inserted
+          if (sy > 0.02 && v.y > top) top = v.y;
+        }
+        return top === -1e9 ? null : top;
+      })(),
+      links: links ? links.visible : null,
+      spokeCount: spokeDiscs.length,
+      wheelAngle: spokeDiscs.length ? spokeDiscs[0].disc.rotation.x : null,
+      spokeVis: spokeDiscs.length ? spokeDiscs[0].disc.visible : null };
   }
-  return { fadeOut, show, setStops, scrub, repaint, probe };
+  /* tuning: set the battery X offset and repaint the current frame so the
+     slider updates live. Kept on the public API so #batteryDock (and the
+     console) can drive it; it writes localStorage so a chosen value survives
+     a reload while you tune. */
+  function setBatteryX(x){
+    BATTERY_X = +x || 0;
+    try { localStorage.setItem('kasiBatteryX', String(BATTERY_X)); } catch (e) {}
+    applyState();
+  }
+  return { fadeOut, show, setStops, scrub, repaint, probe, setBatteryX,
+           getBatteryX: () => BATTERY_X };
 })();
 
 /* =====================================================================
@@ -4739,6 +4851,18 @@ const Hero = (() => {
     b.addEventListener('click', () => usePalette(i));
     palList.appendChild(b);
   });
+
+  /* --- battery X tuning slider (temporary; see #batteryDock / BATTERY_X) --- */
+  const batteryX = $('#batteryX'), batteryXVal = $('#batteryXVal');
+  if (batteryX && typeof Hero !== 'undefined' && Hero.getBatteryX) {
+    const cur = Hero.getBatteryX();
+    batteryX.value = cur; batteryXVal.textContent = cur.toFixed(2);
+    batteryX.addEventListener('input', () => {
+      const v = parseFloat(batteryX.value);
+      batteryXVal.textContent = v.toFixed(2);
+      Hero.setBatteryX(v);
+    });
+  }
 
   /* --- section theming: swap DOM palette as each block hits mid-screen --- */
   const themeIO = new IntersectionObserver((entries) => {
@@ -4898,11 +5022,6 @@ const Game = (() => {
   };
 
   function reset(){
-    /* ★ Drop the scroll story's ghosted HUD before the live one comes up. The
-       preview and the real thing style the same element from two different
-       rules; leaving the class on would cap the live HUD at --hudGhost and
-       keep the pause button hidden for the whole race. */
-    document.body.classList.remove('hud-preview');
     Car.reset();
     Particles.clear();
     G.raceTime = 0; G.topSpeed = 0; G.driftScore = 0;

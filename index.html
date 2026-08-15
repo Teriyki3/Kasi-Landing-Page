@@ -95,72 +95,68 @@
   /* ---- chapter heights set the scroll clock ----------------------------
      p is scrollY/(scrollHeight−innerHeight), so these numbers ARE the story's
      timing: they decide which copy is at mid-screen when each camera keyframe
-     lands.
+     lands. There are FOUR sections, one per scene, and each carries its own
+     --h rather than inheriting a default — the heights are the spec.
 
-     The page carries THREE copy beats, not eight chapters. The camera ladder
-     (KEYS) is driven by p alone and did NOT change when the copy collapsed —
-     these heights are the only thing placing each beat over its subject:
+     Total 790vh, so the scroll span is 690vh:
 
-       ch1   the place    → p .118  ONE cell, off-axis     (K1 .16, subject R)
-       ch1b  the company  → p .325  the 84-cell pack surge (.30-.38), subject R
-       ch2   the lab      → p .654  the car TOUCHING DOWN  (.654), subject L
-       ch3   the race     → (n/a)   no visible copy — see below
+       #s1  the origin     190vh   copy centre 147vh   → p .141
+       #s2  the scale      170vh   (wordless)
+       #s3  the crucible   220vh   copy centre 470vh   → p .609
+       #s4  the race       210vh   .sr-only — no centre crossing
 
-     MEASURED IN THE BROWSER, not computed: scrollMax 3752 px at an 800 px
-     viewport (4.69 viewports of scroll). Re-measure after any copy edit that
-     changes a chapter's rendered height — min-height is a floor, not a
-     guarantee. The snippet is one querySelectorAll over #story computing
-     (top + h/2 - innerHeight/2) / scrollMax per section.
-
-     ★ ch2 MOVED FROM .697 TO ≈.654 when 20vh was transferred from the runway
-       BEFORE it to the runway AFTER it, to buy a longer post-landing drive. The
-       transfer is height-neutral, so ch1/ch1b and everything past the second
-       ticker kept both their pixels and their p; only ch2 shifted, and the whole
-       flight block was remapped onto it (see FLY_IN/FLY_APEX/FLY_LAND). The
-       .654 above is COMPUTED from that transfer — re-measure it in the browser
-       and re-apply the map if you touch these heights again.
+     MEASURE THESE IN THE BROWSER, do not trust the arithmetic above. min-height
+     is a floor, not a guarantee: the rendered height of a copy block depends on
+     the webfont, the viewport width and where the lines happen to wrap. The
+     snippet is one querySelectorAll over #story computing
+     (top + h/2 − innerHeight/2) / scrollMax per section. Re-run it after ANY
+     copy edit and adjust --h until #s1 and #s3 land within ±0.01 of the p above.
 
      ★ EVERY BEAT SITS ON ITS SUBJECT, and that is the whole job of these
-       heights: ch1's "the place" is on the single cell before anything has
-       multiplied; ch1b's "battery company" lands in the middle of the pack
-       completing itself; ch2's "built to break what we make" is on the frame
-       the wheels touch the road. Retune KEYS and these together or the copy
-       will describe an object the camera has already left.
-     ★ ch3 is bottom-aligned (.chapter.final, 18vh pad) and carries only an
-       .sr-only heading — its section CENTRE crosses at p 1.016, i.e. never.
-       That is not a bug and does not need fixing: the finale's visible copy is
-       the road lettering in the 3D scene plus the CTA row in #startWrap
-       (p > .965). Do not "correct" the height to pull a centre crossing back
-       under 1.0; there is nothing there to centre.
-
-     The runway blocks between them are deliberately wordless: that is where
-     the module builds, the pack builds, the car twists down and — after the
-     landing — where the horizon is held EMPTY before the start line arrives.
-     That last runway is the longest for a reason: the empty-road beat is
-     measured in scroll distance (~Δp .15 from touchdown to the line's first
-     glimmer), so it is bought with viewport height, not with a timer. The two
-     tickers still sit at ≈.428 and ≈.881 so the eye has movement through the
-     long wordless stretches. */
-  /* ★ 85vh, not 95. Four copy chapters now instead of three (the company line
-     split out of the definition section), and the ask was for LESS dead space,
-     not more — so each chapter carries a little less empty air rather than the
-     page growing by a full viewport. */
-  .chapter{min-height:85vh;display:flex;position:relative;
+       heights: #s1's claim is on the single cell while the camera arcs past it;
+       #s3's "built to break what we make" is on the frame where the pack seats
+       into the car's belly. Retune KEYS and these together, or the copy will
+       describe an object the camera has already left.
+     ★ RETUNE THE HEIGHTS, NOT THE TIMELINE. If a beat lands late, change --h
+       here. Nudging the p constants in TRACKS instead moves that beat away from
+       every other constant pinned to it — the pack merge, the x-ray window and
+       the ground reveal are all expressed against the same p.
+     ★ #s4 is bottom-aligned (.chapter.final, 18vh pad) and carries only an
+       .sr-only heading, so its section CENTRE crosses at p > 1, i.e. never.
+       That is not a bug. The finale's visible copy is the road lettering in the
+       3D scene plus the CTA row in #startWrap (p > .94). Do not "correct" the
+       height to pull a centre crossing back under 1.0; there is nothing there
+       to centre. */
+  /* ★ .lead is the mirror of .final: bottom-aligned with a deep pad, so at
+     scroll 0 scene 1's copy sits BELOW the fold and the page opens on the cell
+     with nothing competing with it. That beat used to cost a whole empty 63vh
+     runway section; it is now a padding value on the section that follows it. */
+  .chapter{min-height:var(--h,85vh);display:flex;position:relative;
     padding:14vh clamp(24px,7vw,120px);color:var(--fg);
     transition:color .5s ease;}
-  /* silent runway — no copy, so no padding and no reading measure; the height
-     IS the content. --h lets each gap be tuned independently. */
+  /* the wordless scene — no copy, so no padding and no reading measure; the
+     height IS the content. */
   .chapter.runway{min-height:var(--h,90vh);padding:0;}
-  /* ★ 85vh, not 130. The finale is bottom-aligned with an 18vh pad, so its
-     framing at max scroll is set by that pad, NOT by the section's height —
-     the extra height was dead runway after beat 3 had already landed. It also
-     sets the pace: everything after ch2's centre is 30% of the page by
-     definition, so the tail length is what pins beat 2 to p≈.70. Shrinking
-     the runways alone would have dragged beat 2 down to ~.63. */
-  .chapter.final{min-height:85vh;align-items:flex-end;padding-bottom:18vh;}
   .chapter[data-align="left"]{justify-content:flex-start;align-items:center;}
-  .chapter[data-align="right"]{justify-content:flex-end;align-items:center;text-align:right;}
+  /* ★ The extra right pad clears #paletteDock, which is fixed to the right
+     edge (~150px incl. its gutter). Without it a right-aligned display line
+     runs underneath the swatch buttons for the whole time its section is
+     entering the viewport — the copy is still legible, so it reads as a
+     layout bug rather than as an overlap you meant. */
+  .chapter[data-align="right"]{justify-content:flex-end;align-items:center;
+    text-align:right;padding-right:clamp(24px,12vw,190px);}
   .chapter[data-align="center"]{justify-content:center;align-items:center;text-align:center;}
+  /* ★ THESE MUST COME AFTER THE [data-align] RULES. Both selectors weigh the
+     same (two compound parts), so the later one wins — and .lead/.final are
+     about the CROSS axis while data-align is about the main axis. Written
+     above, `align-items:center` from data-align silently overrode both, which
+     put scene 1's copy at the vertical middle of its 190vh section — i.e.
+     right on the fold at scroll 0, exactly the thing the bottom alignment
+     exists to prevent. */
+  /* scene 1: bottom-aligned so the arrival frame is the cell on its own */
+  .chapter.lead{align-items:flex-end;padding-bottom:26vh;}
+  /* the finale's framing at max scroll is set by this pad, not by its height */
+  .chapter.final{align-items:flex-end;padding-bottom:18vh;}
   /* The wrap is sized for the DISPLAY TYPE, not the reading column — the giant
      headings are far wider than 560px and .mask's overflow:hidden was
      amputating the end of any long line ("continental." overran by 242px).
@@ -185,22 +181,31 @@
     margin-top:26px;max-width:46ch;}
   .chapter[data-align="right"] .lede{margin-left:auto;}
   .lede b,.lede strong{color:var(--fg);font-weight:600;}
-  /* A sound and a meaning are two different pieces of information, so they get
-     real separation rather than sitting as one block under the wordmark. The
-     company claim has moved out to its own section entirely (#ch1b), so this
-     no longer needs a bottom margin to hold a heading off it. */
-  .lede.def{margin-top:42px;}
-  /* the company line gets air around it — it is the one claim on the page */
-  #ch1b .h-big{margin-bottom:4px;}
+  /* The definition is a SUPPORTING line under the claim, not a peer of it, so
+     it sits smaller and further down. A sound and a meaning are two different
+     pieces of information and still get real separation from each other. */
+  .lede.def{margin-top:14px;font-size:clamp(15px,1.5vw,19px);opacity:.72;}
+  /* Scene 1 carries FOUR elements — wordmark, claim, lede, definition — where
+     the old #ch1b carried two, so the display size steps down to make room.
+     The claim is still the largest thing in the section; it just no longer
+     needs the full 86px it had when it was alone in its chapter. */
+  #s1 .h-big{margin-bottom:4px;margin-top:22px;
+    font-size:clamp(32px,4.6vw,62px);}
+  #s1 .lede{max-width:min(620px,88vw);}
+  #s1 .kasi-mark{width:min(100%,300px);}
+  /* scene 3 steps down for the same reason scene 1 does — at the full 86px the
+     two-line head spans the whole viewport and collides with the fixed chrome */
+  #s3 .h-big{font-size:clamp(32px,4.8vw,68px);}
+  #s3 .lede{max-width:min(560px,88vw);margin-left:auto;}
   /* visually-hidden but announced: the finale's line is painted on the road in
      the 3D scene now, so this is the only text copy of it left */
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
     border:0;}
-  /* phonetic line — now a standalone row under the ch1 wordmark, so it carries
-     its own size instead of inheriting from the deleted .h-giant */
-  .ipa{font-family:var(--font-mono);font-size:clamp(15px,2vw,26px);
-    color:var(--fg-soft);letter-spacing:2px;margin-top:14px;}
+  /* phonetic line — a standalone row under scene 1's claim, carrying its own
+     size rather than inheriting from the long-deleted .h-giant */
+  .ipa{font-family:var(--font-mono);font-size:clamp(13px,1.5vw,18px);
+    color:var(--fg-soft);letter-spacing:2px;margin-top:38px;}
   /* the KASI wordmark as section 01's title (hero logo docks onto this slot) */
   .kasi-mark{width:min(100%,460px);height:auto;display:block;}
 
@@ -247,18 +252,6 @@
   #creditsDock:hover #creditsPanel,#creditsDock.open #creditsPanel{
     opacity:1;visibility:visible;}
 
-  /* ---- marquee ticker between chapters ---- */
-  .ticker{position:relative;z-index:16;overflow:hidden;pointer-events:none;
-    padding:20px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
-    color:var(--fg);}
-  .tick-inner{display:inline-flex;white-space:nowrap;will-change:transform;
-    animation:marquee 26s linear infinite;
-    font-family:var(--font-display);font-weight:800;font-size:clamp(22px,3.4vw,40px);
-    text-transform:uppercase;letter-spacing:.01em;}
-  .tick-inner span{padding:0 28px;display:inline-flex;align-items:center;gap:28px;}
-  .tick-inner span::after{content:"◆";color:var(--accent);font-size:.5em;}
-  @keyframes marquee{to{transform:translateX(-50%);}}
-
   /* ---- brand wordmark on the arrival screen (inside #landing) ----
      KASI reads as a page title anchored near the top; the tagline is a
      bottom-left accent so neither overlaps the live car in the frame */
@@ -267,12 +260,6 @@
   #heroTitle .kasi{position:absolute;left:50%;top:clamp(20px,6vh,56px);
     transform:translateX(-50%);width:clamp(220px,34vw,540px);height:auto;
     display:block;pointer-events:none;}
-  #heroTitle .tag{position:absolute;left:clamp(24px,7vw,120px);bottom:88px;
-    max-width:min(340px,72vw);text-align:left;
-    font-family:var(--font-mono);font-weight:500;
-    font-size:clamp(11px,1.3vw,15px);letter-spacing:6px;text-transform:uppercase;
-    color:var(--fg);opacity:.7;line-height:1.9;}
-  #heroTitle .tag b{color:var(--accent);font-weight:600;}
 
   /* ---- charge rail: vertical battery progress (from #battBar DNA) ---- */
   #chargeRail{--railLen:min(46vh,380px);
@@ -445,6 +432,35 @@
 
   /* ============ HUD ============ */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
+  /* --- HUD preview: the game, visibly waiting -----------------------------
+     Scene 4 ends by ghosting the race chrome up behind the finale so the
+     transition into the game reads as a cut to something already there rather
+     than as a UI appearing from nowhere.
+     ★ IT MUST OUT-SPECIFY body.hero-phase, which hides #hud with BOTH
+       display:none and visibility:hidden (see the hero-phase rule up top) —
+       and the preview runs while hero-phase is still on, so both have to be
+       undone here or nothing shows.
+     ★ THE PREVIEW IS NOT THE LIVE HUD. --hudGhost caps it well under 1, the
+       whole panel stays pointer-events:none, and the two controls that would
+       be misleading if you could see but not use them (pause, the touch pad)
+       are hidden outright. Game.reset() drops .hud-preview when the race
+       actually starts, so the two states can never overlap. */
+  body.hud-preview #hud,body.hero-phase.hud-preview #hud{
+    display:block;visibility:visible;opacity:var(--hudGhost,0);
+    pointer-events:none;transition:none;}
+  body.hud-preview #pauseBtn,body.hud-preview #touch,
+  body.hud-preview #minimap{display:none;}
+  /* ★ RE-TINT IT. Every HUD colour is a GAME token (--ink is #3A2E22, chosen
+     against the circuit's sand) and the story's ground is near-black navy. At
+     35 % opacity dark-brown-on-dark-navy is not "ghosted", it is gone — the
+     preview rendered as a completely empty overlay. The story's own --fg is
+     already luminance-picked against the live scheme, so it is the right
+     source here and it follows a palette switch for free. */
+  body.hud-preview #stageTag,body.hud-preview #timer,body.hud-preview #posTag,
+  body.hud-preview #lapTag,body.hud-preview #speedo,body.hud-preview #battKwh,
+  body.hud-preview #battPct{color:var(--fg);}
+  body.hud-preview #battBar{border-color:var(--fg);}
+  body.playing #hud{opacity:1;}
   #stageTag{position:absolute;top:26px;left:34px;font-size:12px;letter-spacing:5px;
     color:var(--ink);opacity:.65;}
   #timer{position:absolute;top:22px;left:50%;transform:translateX(-50%);
@@ -516,6 +532,30 @@
      scroll instead of smoothing it — the value is already continuous. */
   #startWrap .btn:not(.ghost){background:var(--accent);color:var(--ground);}
   #startWrap .btn:not(.ghost):hover{background:var(--paper);}
+  /* --- the ask, pulsing --------------------------------------------------
+     The storyboard wants a bold glowing button below the starting-line text —
+     and the starting-line text is the road lettering in the 3D scene, which
+     #startWrap already sits under in screen space.
+     ★ The pulse animates BOX-SHADOW ONLY. --accent is rewritten from the
+       scroll on every frame it changes (see the note above), so animating or
+       transitioning `background` here would fight the scroll rather than
+       decorate it. box-shadow is not scroll-driven, so it is free to run on
+       its own clock.
+     ★ color-mix keeps the glow tied to --accent, so at p=1 the halo is the
+       fully-charged colour — the button is literally the state of charge the
+       whole page has been filling. */
+  @keyframes investPulse{
+    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent),
+                       0 0 22px 4px color-mix(in srgb,var(--accent) 30%,transparent);}
+    50%    {box-shadow:0 0 0 10px transparent,
+                       0 0 46px 12px color-mix(in srgb,var(--accent) 55%,transparent);}
+  }
+  #startWrap.on #investBtn{animation:investPulse 1.9s ease-in-out infinite;
+    font-size:20px;letter-spacing:7px;padding:19px 62px;}
+  @media (prefers-reduced-motion:reduce){
+    #startWrap.on #investBtn{animation:none;
+      box-shadow:0 0 26px 6px color-mix(in srgb,var(--accent) 34%,transparent);}
+  }
   /* the ask is filled and charged; entering the lab is the quieter second
      action, so it borrows the existing ghost treatment rather than a new one */
   #startWrap .btn.ghost{color:var(--fg);border-color:var(--fg);}
@@ -699,7 +739,12 @@
   <canvas id="heroCanvas"></canvas>
   <div id="heroTitle">
     <img class="kasi" id="kasiLogo" alt="KASI">
-    <div class="tag">Cells for the continent's grid.<br><b>Tested in the most extreme conditions.</b></div>
+    <!-- ★ NO TAGLINE HERE ANY MORE. It read "Cells for the continent's grid.
+         Tested in the most extreme conditions." — which is word-for-word scene
+         1's lede, one scroll further down. Two copies of one sentence, one of
+         them fading out as the other faded in. The wordmark alone holds the
+         arrival frame now, and the claim is made once, in the scene built for
+         it. -->
   </div>
   <div id="scrollHint">SCROLL<span class="arrow">&#8595;</span></div>
   <div id="startWrap">
@@ -713,97 +758,63 @@
     </div>
   </div>
 </section>
-<!-- ============ BRAND STORY (scrolls over the live car) ============ -->
+<!-- ============ BRAND STORY — FOUR SCENES ============
+     Four sections, one camera movement each. The chapter heights ARE the
+     timing: p is scrollY/(scrollHeight−innerHeight), so --h decides which copy
+     is at mid-screen when each keyframe lands. See the doc block in the CSS.
+
+     There are no runway sections and no tickers any more. Scene 2 is the
+     wordless beat — it is a real named scene with its own payoff (a hundred
+     cells arriving and wiring themselves together), not dead space between two
+     pieces of copy, which is what the old runways were. -->
 <main id="story">
 
-  <!-- CH0 — arrival. Deliberately empty: one viewport of runway so the single
-       cell can hold the frame on its own before any copy competes with it. -->
-  <section class="chapter runway" id="ch0" data-theme="white" data-align="center"
-           style="--h:63vh"></section>
-
-  <!-- ============ BEAT 1 — the place ============
-       The name, said and then defined. Lands at p≈.12, on the single cell.
-       The hero wordmark flies down onto #ch1Logo here (dockHeroLogo, DOCK_B
-       .13), so the mark itself is the section title.
-       ★ The company claim used to live here too, stacked straight under the
-         definition. It has its own section now (#ch1b) — a sound, a meaning
-         and a claim are three different things and were reading as one block. -->
-  <section class="chapter" id="ch1" data-theme="cream" data-align="left"
-           data-nav="The place">
+  <!-- ============ SCENE 1 — THE ORIGIN ============
+       "KASI is a battery company…" over a close tracking arc across a single
+       lit cell. Bottom-aligned with a deep pad so the page OPENS on the cell
+       alone: at scroll 0 this copy is still below the fold, which is the beat
+       the deleted #ch0 runway used to buy with a whole empty section.
+       Lands at p≈.14, on the arc. -->
+  <section class="chapter lead" id="s1" data-theme="cream" data-align="left"
+           data-nav="The origin" style="--h:190vh">
     <div class="wrap">
       <!-- The hero wordmark flies down and lands on this slot (see dockHeroLogo).
            ★ NO .rv HERE, DELIBERATELY. .rv parks an element at opacity 0 /
-             translateY(38px) until its IntersectionObserver fires. This <img> is
-             the flight TARGET: the dock measures its rect to know where to land.
-             With .rv on it the mark flew to a slot 38px below the real one and
-             then the slot slid out from under it mid-flight when the observer
-             fired — the "jump" at the end of the handoff. The dock handoff IS
-             this element's reveal; the ipa/def siblings keep their .rv stagger. -->
+             translateY(38px) until its observer fires. This <img> is the flight
+             TARGET: the dock measures its rect to know where to land. With .rv
+             on it the mark flew to a slot 38px below the real one and then the
+             slot slid out from under it mid-flight when the observer fired —
+             the "jump" at the end of the handoff. The dock handoff IS this
+             element's reveal; its siblings keep their .rv stagger. -->
       <img class="kasi-mark" id="ch1Logo" alt="KASI">
-      <div class="ipa rv" style="--i:1">/ˈka·si/</div>
-      <p class="lede def rv" style="--i:2">from <b>lokasie</b> — the location, the township,
-        the neighbourhood. The place that makes you.</p>
-    </div>
-  </section>
-
-  <!-- runway: the single cell multiplies into a module -->
-  <section class="chapter runway" data-theme="cream" style="--h:12vh"></section>
-
-  <!-- ============ BEAT 1b — the company ============
-       "KASI is a battery company. We're designing the cells that will power the
-       continent's grid — tested in the most extreme conditions."
-       Lands at p≈.33 — deliberately, because that is where the remaining 84
-       cells surge in and the pack completes (see the t0 windows in THE CELLS).
-       The claim and the object arrive together.
-       ★ The heading carries the literal word KASI as text; the old version
-         leaned on the logo for it and patched the reading with an aria-label. -->
-  <section class="chapter" id="ch1b" data-theme="cream" data-align="left"
-           data-nav="The company">
-    <div class="wrap">
       <h2 class="h-big rv"><span class="mask"><span>KASI is a</span></span>
         <span class="mask"><span class="accent">battery company.</span></span></h2>
       <p class="lede rv" style="--i:2">We're designing the cells that will power the continent's
         grid — <b>tested in the most extreme conditions</b>.</p>
+      <!-- the name, said and then defined: a supporting line under the claim,
+           not a beat of its own. It used to have its own chapter and its own
+           camera move, which is one more text moment than there are scenes. -->
+      <div class="ipa rv" style="--i:3">/ˈka·si/</div>
+      <p class="lede def rv" style="--i:4">from <b>lokasie</b> — the location, the township,
+        the neighbourhood. The place that makes you.</p>
     </div>
   </section>
 
-  <div class="ticker" data-theme="ink" aria-hidden="true">
-    <div class="tick-inner">
-      <span>Cell to grid</span><span>Designed on the continent it powers</span>
-      <span>Tested past the spec</span>
-      <span>Nairobi</span><span>Nakuru</span><span>Joburg</span><span>Kigali</span>
-      <span>Cell to grid</span><span>Designed on the continent it powers</span>
-      <span>Tested past the spec</span>
-      <span>Nairobi</span><span>Nakuru</span><span>Joburg</span><span>Kigali</span>
-    </div>
-  </div>
+  <!-- ============ SCENE 2 — THE SCALE ============
+       Wordless, on purpose. The camera pulls back while one cell becomes a
+       hundred, ring by ring, and the bus bars light between them. The copy
+       stays out of the way because the multiplication IS the argument. -->
+  <section class="chapter runway" id="s2" data-theme="ink"
+           data-nav="The scale" style="--h:170vh"></section>
 
-  <!-- ★ This is the longest wordless gap on the page and it is no longer
-       empty: the car enters from the top-right, arcs, rolls, and the pack goes
-       into the floor. It is the most active stretch in the whole story — the
-       copy stays out of its way on purpose.
-       ★ 58vh, down from 78. Twenty viewport-hundredths were moved from here to
-         the runway AFTER the landing (below), because the beat that needed room
-         was the drive, not the flight: the car was landing and meeting the start
-         line almost immediately. Total page height is unchanged, so every beat
-         before the car act keeps both its pixels and its p — only ch2's centre
-         moves earlier, and the flight constants were compressed to follow it. -->
-  <section class="chapter runway" data-theme="ink" style="--h:58vh"></section>
-
-  <!-- ============ BEAT 2 — the lab ============
-       "Before a cell reaches the grid, it will survive our lab. A motorsports
-       circuit, built to break what we make — so it never breaks where it matters."
-       Lands at p≈.654 — exactly the frame the wheels touch down, seen from
-       behind. Right-aligned because K5 carries side +0.10, which pushes the car
-       to screen-left.
-       ★ ITS CENTRE IS WHAT FLY_LAND IS PINNED TO. The runway above this chapter
-         was shortened by 20vh, which moved this centre earlier, which is why the
-         whole flight block was remapped — see the note on FLY_IN/APEX/LAND.
-       ★ The start line is deliberately NOT up yet here (it starts emerging at
-         .80, after a real stretch of empty horizon). It used to be, and the grid
-         under this copy gave the ending away. -->
-  <section class="chapter" id="ch2" data-theme="blue" data-align="right"
-           data-nav="The lab">
+  <!-- ============ SCENE 3 — THE CRUCIBLE ============
+       "Built to break what we make." over the under-chassis shot: the camera
+       drops to the floor, the car x-rays into existence above the array, and
+       the grid rises into its belly. Right-aligned because the ladder carries
+       side +0.20 through here, which pushes the subject to screen-left.
+       Lands at p≈.61, just as the pack seats. -->
+  <section class="chapter" id="s3" data-theme="blue" data-align="right"
+           data-nav="The crucible" style="--h:220vh">
     <div class="wrap">
       <h2 class="h-big rv"><span class="mask"><span>Built to break</span></span>
         <span class="mask"><span class="accent">what we make.</span></span></h2>
@@ -813,40 +824,17 @@
     </div>
   </section>
 
-  <!-- The car drives away toward the start line, camera behind.
-       ★ 58vh, up from 38 — this is where the 20vh from the pre-ch2 runway went.
-         The requirement is a real stretch of driving on an EMPTY road before the
-         start line shows up, and that beat is measured in scroll distance. At
-         38vh the horizon-empty window was around Δp .10; at 58vh it is ~Δp .15,
-         which is roughly three seconds at an ordinary scroll pace. -->
-  <section class="chapter runway" data-theme="blue" style="--h:58vh"></section>
-
-  <div class="ticker" data-theme="blue" aria-hidden="true">
-    <div class="tick-inner">
-      <span>Heat</span><span>Dust</span><span>Vibration</span><span>Load</span>
-      <span>Langa Langa, Nakuru</span><span>Break it here, not there</span>
-      <span>Heat</span><span>Dust</span><span>Vibration</span><span>Load</span>
-      <span>Langa Langa, Nakuru</span><span>Break it here, not there</span>
-    </div>
-  </div>
-
-  <section class="chapter runway" data-theme="blue" style="--h:15vh"></section>
-
-  <!-- ============ BEAT 3 — the race ============
-       "The race for Africa's energy future has started."
-       Lands at p≈.98, with the car parked on the grid behind the start line
-       it has just driven up to. The
-       INVEST / RUN THE LAB buttons live in #landing's #startWrap, which fades
-       up over this chapter at p>0.965.
-       ★ THE HEADLINE IS NOT HERE ANY MORE. It is painted on the road in the 3D
-         scene — track lettering beyond the start line, the way a driver reads
-         it on the grid (see ROAD_LINES). Only the .sr-only copy below remains,
-         so the line is still announced; do NOT restore a visible <h2> here or
-         the same sentence lands twice in one viewport. The chapter is now
-         effectively runway that carries the CTA row and the road text.
-         It keeps data-nav so the charge rail still gets its third tick. -->
-  <section class="chapter final" id="ch3" data-theme="white" data-align="left"
-           data-nav="The race">
+  <!-- ============ SCENE 4 — THE CATALYST ============
+       The orbit dolly: the camera sweeps around the car as it launches, tracks
+       alongside, and settles behind it on the grid.
+       ★ THE HEADLINE IS NOT HERE. It is painted on the road in the 3D scene —
+         track lettering beyond the start line, the way a driver reads it on the
+         grid (see ROAD_LINES). Only the .sr-only copy below remains, so the line
+         is still announced; do NOT restore a visible <h2> here or the same
+         sentence lands twice in one viewport. The CTA row lives in #landing's
+         #startWrap and fades up over this section at p>0.94. -->
+  <section class="chapter final" id="s4" data-theme="white" data-align="center"
+           data-nav="The race" style="--h:210vh">
     <div class="wrap">
       <h2 class="sr-only">The race for Africa's energy future has started.</h2>
     </div>
@@ -925,6 +913,21 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
+<!-- GSAP + ScrollTrigger drive the scroll timeline. Same jsdelivr host as the
+     three.js examples above, deliberately: one blocked domain should be one
+     failure mode to diagnose, not two. -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<!-- ★ Its own tiny script element, for the same reason the preloader safety net
+     up in the body is: the main script is one ~3,700-line block, so ANY throw
+     during setup takes the whole page with it. Probing for GSAP here — before
+     that block runs — means the story's fallback path is decided by a value
+     that was read while nothing could yet have thrown. -->
+<script>
+window.__KASI_GSAP = (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined');
+if (!window.__KASI_GSAP)
+  console.warn('GSAP unavailable — scroll story falling back to the built-in evaluator');
+</script>
 <!-- F1 car model embedded as a base64 data-URI so it loads with no network
      fetch (works when index.html is opened directly from disk / file://) -->
 <script src="car_model.js"></script>
@@ -2343,15 +2346,28 @@ const Car = (() => {
    PARTICLES — pooled dust puffs: sandy plumes off-road, pale tyre
    smoke on tarmac drifts.
    ===================================================================== */
-const Particles = (() => {
-  const POOL = 140;
-  const geo = new THREE.BoxGeometry(0.7,0.7,0.7);
+/* ★ A FACTORY, NOT A SINGLETON — because there are now two pools with two
+   completely different notions of time. The game's pool integrates velocity
+   against dt, which is correct for a live simulation. The hero's pool CANNOT:
+   the scroll story is a pure function of p, so a dt-driven puff freezes
+   mid-life the moment you stop scrolling and gives a different frame every
+   time you scrub to the same place. See applyP() below for the pure driver.
+   The game's construction is unchanged (`Particles` below), so its behaviour
+   is bit-identical to before this split. */
+function makeParticles(targetScene, POOL, shape){
+  /* The game's puffs are boxes — chunky sand kicked off a rally stage, seen
+     from 30 units back, where the facets read as grit. The hero's are seen from
+     8 units broadside, where the same facets read as panes of glass sliding
+     past the car. A low-poly sphere costs 80 triangles and is the difference
+     between smoke and debris. */
+  const geo = shape === 'puff' ? new THREE.IcosahedronGeometry(0.42, 1)
+                               : new THREE.BoxGeometry(0.7,0.7,0.7);
   const items = [];
   for (let i = 0; i < POOL; i++) {
     const m = new THREE.MeshBasicMaterial({ color:PAL.dust, transparent:true, opacity:0 });
     const mesh = new THREE.Mesh(geo, m);
     mesh.visible = false;
-    scene.add(mesh);
+    targetScene.add(mesh);
     items.push({ mesh, life:0, max:1, vel:new THREE.Vector3() });
   }
   let cursor = 0;
@@ -2401,8 +2417,69 @@ const Particles = (() => {
     for (const p of items) { p.life = 0; p.mesh.visible = false; p.mesh.material.opacity = 0; }
   }
 
-  return { emitFromCar, update, clear };
-})();
+  /* --- the pure driver: puffs as a function of p, not of elapsed time -------
+     Every puff owns a fixed birth p and a fixed life measured in p, and its
+     whole state is derived from (pv - birthP). Nothing accumulates, so the
+     trail scrubs backwards correctly and screenshots reproduce exactly.
+
+     ★ SEEDED, NOT RANDOM. Math.random() at spawn time would make the same p
+       render differently on every reload, which defeats screenshot diffing —
+       and the verification pass for this page is a screenshot diff. hash() is
+       an integer scrambler over the puff index; the "randomness" is fixed at
+       the first call and never changes again.
+     ★ SPAWNED AT THE CAR'S POSITION AT THAT PUFF'S OWN BIRTH p, not at the
+       car's current one. originFn(birthP) is cheap because the car's path is
+       itself pure — and it is the whole reason the trail lies down BEHIND an
+       accelerating car instead of travelling along with it. */
+  let seeded = false;
+  function hash(n){ n = (n << 13) ^ n; return ((n * (n*n*15731 + 789221) + 1376312589) & 0x7fffffff) / 0x7fffffff; }
+  function seedP(spec){
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const w = spec.windows[i % spec.windows.length];
+      const f = hash(i * 7 + 1);
+      it.birthP = w[0] + f * (w[1] - w[0]);
+      it.lifeP  = spec.lifeP * (0.7 + 0.6 * hash(i * 13 + 5));
+      it.side   = (i % 2) ? 1 : -1;
+      it.vel.set((hash(i*17+3) - 0.5) * 3, 1.6 + hash(i*23+9) * 2.2, (hash(i*29+11) - 0.5) * 3);
+      it.spin   = hash(i*31+7) * 3;
+      it.mesh.material.color.setHex(0xD8D2C6);      // tyre smoke, as the game uses
+    }
+    seeded = true;
+  }
+  const _sp = new THREE.Vector3();
+  function applyP(pv, gain, spec, originFn){
+    if (!seeded) seedP(spec);
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const age = (pv - it.birthP) / it.lifeP;
+      if (gain <= 0.002 || age < 0 || age > 1) {
+        if (it.mesh.visible) { it.mesh.visible = false; it.mesh.material.opacity = 0; }
+        continue;
+      }
+      originFn(it.birthP, it.side, _sp);
+      it.mesh.visible = true;
+      it.mesh.position.set(_sp.x + it.vel.x * age * 0.5,
+                           _sp.y + it.vel.y * age * 0.5,
+                           _sp.z + it.vel.z * age * 0.5);
+      it.mesh.rotation.set(it.spin, it.spin * 1.7, 0);
+      /* ★ SIZED FOR THIS CAMERA, NOT THE GAME'S. The pool geometry is a 0.7-unit
+         box and the game multiplies it up to ~1.7 — which is fine 30 units back
+         behind a car, and enormous when the scene-4 rig is 8 units out and
+         broadside. At the game's scale these read as grey slabs sliding past
+         the bodywork rather than as smoke. spec.scale lets the two pools share
+         one implementation without sharing a sense of distance. */
+      const sc = spec.scale || 1;
+      it.mesh.scale.setScalar((0.55 + age * 1.6) * sc);
+      // ramp in fast, fade out over the whole life — a puff that appears at
+      // full opacity reads as a pop, especially when you are scrubbing slowly
+      it.mesh.material.opacity = Math.min(1, age * 7) * (1 - age) * 0.26 * gain;
+    }
+  }
+
+  return { emitFromCar, update, clear, applyP };
+}
+const Particles = makeParticles(scene, 140);
 
 /* =====================================================================
    AI — 7 kinematic spline-followers. Each car's position is driven
@@ -2567,11 +2644,138 @@ const Hero = (() => {
   }
   heroViewport();
 
-  // lights cloned from the game so shading matches at the crossfade
-  hScene.add(new THREE.HemisphereLight(0xFFF3D6, 0xD9B87C, 0.9));
+  /* --- the light rig, and the one thing it has to do -----------------------
+     Scene 1 is "dramatically lit … against a backdrop that hints at an African
+     landscape at dawn"; scene 3 is "the harsh, high-contrast neons of a testing
+     facility". Both are LIGHTING, not colour: the palette is fixed (every
+     scheme resolves its scene background to `ground` — see schemeFor) and this
+     rig may not touch a single token. So the shift is done with intensity,
+     contrast and two hard rims whose colours are pulled from whichever scheme
+     is live, via stopAt(). Switch palettes and the whole rig re-tints.
+
+     Base values match the game's lights so shading agrees at the crossfade;
+     applyWorldLight() ramps them away from that and back. */
+  const hHemi = new THREE.HemisphereLight(0xFFF3D6, 0xD9B87C, 0.9);
+  hScene.add(hHemi);
   const hSun = new THREE.DirectionalLight(0xFFEFD0, 0.8);
   hSun.position.set(90, 150, 40);
   hScene.add(hSun);
+  /* Two opposed hard keys, dark until scene 3. A test cell is lit from the
+     sides with no fill — that is what makes it read as a facility rather than
+     as daylight. */
+  const hRimA = new THREE.DirectionalLight(0xFFFFFF, 0);
+  hRimA.position.set(-60, 18, 25); hScene.add(hRimA);
+  const hRimB = new THREE.DirectionalLight(0xFFFFFF, 0);
+  hRimB.position.set(55, 12, -40); hScene.add(hRimB);
+  /* --- the backdrop: a dawn horizon in scene 1, a lit box by scene 3 --------
+     Parented to the camera and drawn first with depth off, so it is a painted
+     backing rather than geometry in the world — it can never be flown past.
+
+     ★ IT MUST NOT CLAIM ALPHA. The ASCII flashlight (see renderHero) renders
+       the scene to a target with a transparent clear and uses the RESULT'S
+       ALPHA as the car mask. A full-screen mesh writing alpha=1 would make
+       every pixel "car" and the effect would convert the whole frame. Hence
+       NoBlending plus an explicit alpha of 0 in the shader: it paints colour
+       into the target and leaves the mask alone. renderHero's composite was
+       changed to match — read that note before touching either.
+     ★ The ridge is a canvas alpha strip, not geometry: a few smoothed hills
+       and two acacia crowns. It is a HINT of a landscape at the horizon, which
+       is all the storyboard asks for, and it fades out by p≈0.54 because a
+       test facility does not have a skyline. */
+  const ridgeTex = (() => {
+    const cv = document.createElement('canvas');
+    cv.width = 1024; cv.height = 128;
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff';
+    // hills: three overlapping smooth humps at slightly different heights.
+    // Kept low in the canvas — this is a far ridge, not a mountain range.
+    for (const [cxp, w, h] of [[140, 340, 30], [470, 430, 46], [850, 460, 24]]) {
+      cx.beginPath(); cx.moveTo(cxp - w/2, 128);
+      for (let x = 0; x <= w; x += 8) {
+        const t = x / w;
+        cx.lineTo(cxp - w/2 + x, 128 - h * Math.pow(Math.sin(Math.PI * t), 1.4));
+      }
+      cx.lineTo(cxp + w/2, 128); cx.closePath(); cx.fill();
+    }
+    // two acacias: a trunk and a flat crown — the one silhouette that says
+    // WHERE. Small, and standing on the ridge line rather than in front of it.
+    for (const [tx, s] of [[300, 0.62], [700, 0.45]]) {
+      cx.fillRect(tx - 1.6*s, 128 - 34*s, 3.2*s, 34*s);
+      cx.beginPath();
+      cx.ellipse(tx, 128 - 36*s, 22*s, 5.5*s, 0, 0, Math.PI*2);
+      cx.fill();
+    }
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = THREE.RepeatWrapping;
+    return t;
+  })();
+  let backdropMat = null;
+  {
+    backdropMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTop:   { value: new THREE.Color(0x0B0332) },
+        uHorz:  { value: new THREE.Color(0x2A1550) },
+        uGlow:  { value: new THREE.Color(0xE8542F) },
+        uMix:   { value: 0 },
+        uRidge: { value: 1 },
+        uRidgeTex: { value: ridgeTex },
+      },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv;
+        gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+      fragmentShader: `
+        uniform vec3 uTop, uHorz, uGlow; uniform float uMix, uRidge;
+        uniform sampler2D uRidgeTex; varying vec2 vUv;
+        void main(){
+          /* DAWN. The brief word is "subtly": this is a hint of a landscape at
+             the bottom of the frame, not a scene. The horizon sits at y≈0.17,
+             the warm band is narrow, and the whole thing is a few percent of
+             lift over the ground colour — the cell is the subject and the sky
+             must never compete with it. */
+          float h = smoothstep(0.40, 0.10, vUv.y);
+          vec3 dawn = mix(uTop, uHorz, h * 0.55);
+          float glow = exp(-pow((vUv.y - 0.135) * 13.0, 2.0))
+                     * exp(-pow((vUv.x - 0.34) * 1.7, 2.0));
+          dawn += uGlow * glow * 0.20;
+          /* The ridge occupies y 0.06→0.14 — a thin strip sitting ON the
+             horizon, DARKER than the sky behind it, which is what a silhouette
+             at dawn actually is. flipY is on by default, so texture v=0 is the
+             canvas BOTTOM, i.e. where the hill bases were drawn. */
+          float ridge = texture2D(uRidgeTex, vec2(vUv.x, (vUv.y - 0.06) / 0.16)).r
+                      * step(0.055, vUv.y) * step(vUv.y, 0.23);
+          dawn = mix(dawn, uTop * 0.72, clamp(ridge, 0.0, 1.0) * uRidge);
+          /* FACILITY. No horizon and no sky: a cold even box that is brighter
+             low down, the way a room lit from its floor reads. The whole shift
+             from dawn to this is what sells "we took it indoors". */
+          vec3 lab = mix(uTop * 0.88, uTop * 1.22, smoothstep(0.70, 0.0, vUv.y));
+          // ★ alpha 0: paint colour, claim no coverage. See the note above.
+          gl_FragColor = vec4(mix(dawn, lab, uMix), 0.0);
+        }`,
+      depthTest:false, depthWrite:false, blending:THREE.NoBlending,
+    });
+    const bd = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), backdropMat);
+    bd.frustumCulled = false; bd.renderOrder = -1;
+    hScene.add(bd);
+  }
+
+  const _rimCol = new THREE.Color();
+  function applyWorldLight(pv){
+    const f = ST.facility;
+    hHemi.intensity = 0.9 - 0.55 * f;          // strip the ambient fill out
+    hSun.intensity  = 0.8 - 0.35 * f;
+    /* The rims take the live stops, so this is a contrast change rather than a
+       colour change: at any p the light is a colour the palette already
+       contains. 0.34 and 0.72 are two of STOP_AT's own positions — the cool
+       and warm ends of whichever scheme is loaded. */
+    hRimA.intensity = 1.15 * f;
+    hRimB.intensity = 0.70 * f;
+    stopAt(0.72, _rimCol); hRimA.color.copy(_rimCol);
+    stopAt(0.34, _rimCol); hRimB.color.copy(_rimCol);
+    if (backdropMat) {
+      backdropMat.uniforms.uMix.value   = f;
+      backdropMat.uniforms.uRidge.value = ST.ridge;
+      stopAt(clamp01(pv), backdropMat.uniforms.uGlow.value);
+    }
+  }
 
   // same procedural KASI car the player drives
   const { body:car } = makeRallyCar(KASI_GREEN, KASI_GREEN);
@@ -2806,70 +3010,396 @@ const Hero = (() => {
   }
 
   /* =====================================================================
-     THE CELLS — one cell, then a module, then the pack.
+     THE TIMELINE — four scenes, authored as data.
 
-     The asset is 256 triangles, so cloning is free: all 96 cells are ONE
+     Every animated quantity on the page is a plain number on ST, and every
+     one of them is written by exactly one place: the track table below.
+     Nothing reads the clock; nothing accumulates. Given a p you get an ST,
+     forwards or backwards, which is the property applyState() and
+     Hero.scrub() are both built on.
+
+     ★ THE TABLE IS DATA, NOT GSAP CALLS, AND THAT IS DELIBERATE. Two
+       evaluators run over it: a real GSAP timeline when the CDN answered,
+       and a ~20-line piecewise reader when it did not. Writing the story as
+       gsap.to() calls would have made GSAP a hard dependency of the page
+       rendering AT ALL — and this file's whole loading strategy (data-URI
+       models, typeof guards on GLTFLoader, the preloader safety net) is
+       built on the opposite premise. A blocked jsdelivr should cost you the
+       silk, not the story.
+
+     ★ EASE FORMULAS MUST MATCH GSAP'S EXACTLY. They are checked by
+       screenshotting the same p on both paths; if you add an ease here, add
+       it to EASE too or the fallback silently plays a different animation.
+
+     The four scenes, and the camera move each one owns:
+       origin    0.00  close tracking arc across a single lit cell
+       scale     0.22  pull-back; 100 cells snap outward and link up
+       crucible  0.46  drop low, under the chassis; the car x-rays into being
+       catalyst  0.74  orbit dolly, launch, track alongside, brake onto grid
+     ===================================================================== */
+  const HAS_GSAP = !!window.__KASI_GSAP;
+
+  /* GSAP's published formulas.
+     ★ GSAP's powerN IS NOT t^N. Its Power1 is quadratic, Power2 cubic, Power3
+       quartic, Power4 quintic — the number counts from Power0 = linear, so
+       every name here is one exponent higher than it looks. Writing power2.out
+       as 1-(1-t)^2 (the obvious reading) makes the fallback play a visibly
+       different curve from GSAP: at t=0.3 it returns 0.51 where GSAP returns
+       0.657, a 29 % error on the value in the middle of every ease on the page.
+       This is exactly the class of bug the two-evaluator design exists to
+       surface, and it is only catchable by diffing the two paths.
+     ★ back.out(s) is the one parameterised ease we use; 2.2 is the overshoot
+       the cell snap is tuned against. */
+  const EASE = {
+    'none'        : t => t,
+    'power2.out'  : t => 1 - Math.pow(1-t, 3),                 // cubic
+    'power3.in'   : t => t*t*t*t,                              // quartic
+    'power4.out'  : t => 1 - Math.pow(1-t, 5),                 // quintic
+    'power2.inOut': t => t < 0.5 ? 4*t*t*t : 1 - 4*Math.pow(1-t, 3),
+    'back.out2.2' : t => { const s = 2.2, u = t - 1; return 1 + (s+1)*u*u*u + s*u*u; },
+  };
+
+  /* ★ 1.6, NOT 2.4. The hover height is not a styling choice — it is what
+     decides whether scene 3's composition exists. The under-chassis shot has to
+     hold BOTH the car's floor and the 100-cell grid lying at y≈0..0.22, and at
+     fov 38 the frame is only 0.6885·d tall. At 2.4 the aim had to sit so high
+     to centre the car that the grid fell clean out of the bottom of the frame,
+     and the whole "the pack rises into the belly" beat played off screen. */
+  const HOVER_Y = 1.6;            // the car materialises hovering this high
+
+  /* Live state. Every key here is written by at least one track; the initial
+     values are what the page shows BEFORE that key's first track opens, so
+     they are part of the spec (carY starts at HOVER_Y because the car spends
+     all of scene 3 up there and only comes down at the end of it). */
+  const ST = {
+    u:0,                                   // camera spline parameter, scenes 1-3
+    side:0,                                // screen-space lateral aim offset
+    rigMix:0, az:-26.565, rad:6.261, hgt:0.55, lookY:1.0, lead:0,   // scene 4 rig
+    carY:HOVER_Y, carZ:0, carVis:0,        // car pose + solid opacity
+    xray:0, scanY:-0.5,                    // hologram shell + assembly scan band
+    linkGlow:0,                            // the energy grid between cells
+    facility:0, ridge:1,                   // backdrop: dawn → testing-facility neon
+    smoke:0, hudGhost:0,
+  };
+
+  /* {key, from, to, at, dur, ease}. `at`+`dur` are in p, so they read directly
+     against every other constant on the page. Tracks on one key must not
+     overlap; each holds its `from` before it opens and its `to` after it ends. */
+  const TRACKS = [
+    /* --- camera spline parameter -------------------------------------------
+       One track per KEYS segment, so every keyframe's `at` is hit EXACTLY at
+       the p it claims — the spline still owns the path, the timeline owns the
+       pacing along it. Interior boundaries are 'none' on purpose: easing every
+       segment is what used to put a full stop at each keyframe (the old
+       "herky-jerky" note). Only the scene boundaries get a curve. */
+    { key:'u', from:0.0, to:1/7, at:0.00, dur:0.12, ease:'power2.inOut' },  // K0→K1
+    { key:'u', from:1/7, to:2/7, at:0.12, dur:0.10, ease:'none'         },  // K1→K2
+    { key:'u', from:2/7, to:3/7, at:0.22, dur:0.14, ease:'power2.out'   },  // K2→K3
+    { key:'u', from:3/7, to:4/7, at:0.36, dur:0.10, ease:'none'         },  // K3→K4
+    { key:'u', from:4/7, to:5/7, at:0.46, dur:0.06, ease:'power2.inOut' },  // K4→K4b
+    { key:'u', from:5/7, to:6/7, at:0.52, dur:0.06, ease:'none'         },  // K4b→K5
+    { key:'u', from:6/7, to:1.0, at:0.58, dur:0.16, ease:'none'         },  // K5→K6
+
+    /* --- lateral aim: keep the subject out of the copy's half ---------------
+       ★ MUST BE EXACTLY 0 FOR p >= 0.93. It is applied to lookAt AFTER the
+         camera pose is resolved, so any residue here rotates the match-cut aim
+         and the game pops on START. The last track lands on 0 at 0.93. */
+    { key:'side', from:0,     to:-0.18, at:0.02, dur:0.10, ease:'power2.out' },
+    { key:'side', from:-0.18, to:0,     at:0.19, dur:0.05, ease:'none' },
+    { key:'side', from:0,     to:0.20,  at:0.50, dur:0.08, ease:'power2.out' },
+    /* ★ Clears during the orbit, not at the end of it. Scene 4 has no DOM copy
+         to dodge — the closing line is painted on the road, dead centre — so an
+         aim offset here only shoves the car toward a corner while the camera is
+         already swinging. It is 0 from p=0.80, comfortably before the match
+         cut needs it to be. */
+    { key:'side', from:0.20,  to:0,     at:0.74, dur:0.06, ease:'power2.inOut' },
+
+    /* --- scene 4: hand the camera from the spline to the car-relative rig ---
+       Opens exactly where u reaches 1.0, because O0 is authored to BE the last
+       keyframe's pose. The blend is therefore a no-op at its start and only
+       diverges once the car moves. */
+    { key:'rigMix', from:0, to:1, at:0.74, dur:0.05, ease:'power2.inOut' },
+    { key:'az',    from:-26.565, to:-85,  at:0.74, dur:0.06, ease:'power2.out'   },
+    { key:'az',    from:-85,     to:-140, at:0.80, dur:0.07, ease:'none'         },
+    { key:'az',    from:-140,    to:-170, at:0.87, dur:0.06, ease:'none'         },
+    { key:'az',    from:-170,    to:-180, at:0.93, dur:0.07, ease:'power2.inOut' },
+    { key:'rad',   from:6.261,   to:8,    at:0.74, dur:0.06, ease:'power2.out'   },
+    { key:'rad',   from:8,       to:12,   at:0.80, dur:0.07, ease:'none'         },
+    { key:'rad',   from:12,      to:20,   at:0.87, dur:0.06, ease:'none'         },
+    { key:'rad',   from:20,      to:30,   at:0.93, dur:0.07, ease:'power2.inOut' },
+    { key:'hgt',   from:0.55,    to:2.4,  at:0.74, dur:0.06, ease:'power2.out'   },
+    { key:'hgt',   from:2.4,     to:4.2,  at:0.80, dur:0.07, ease:'none'         },
+    { key:'hgt',   from:4.2,     to:8,    at:0.87, dur:0.06, ease:'none'         },
+    { key:'hgt',   from:8,       to:14,   at:0.93, dur:0.07, ease:'power2.inOut' },
+    { key:'lookY', from:1.0,     to:1.6,  at:0.74, dur:0.13, ease:'power2.out'   },
+    { key:'lookY', from:1.6,     to:2.0,  at:0.87, dur:0.08, ease:'none'         },
+    /* ★ THE AIM DOES NOT LEAD UNTIL THE CAMERA IS BEHIND THE CAR. `lead` pushes
+         the look target down the road, which is right for the closing shot and
+         catastrophic during the orbit: abeam at r=8, a 3.5-unit lead swings the
+         aim so far ahead that the car leaves the frame entirely. Nothing until
+         0.87, then it opens to the 8 units the match cut requires. */
+    { key:'lead',  from:0,       to:8,    at:0.87, dur:0.08, ease:'power2.inOut' },
+
+    /* --- the car ------------------------------------------------------------
+       Descent: the pack has seated by 0.685, so the two come down as one
+       object and the wheels touch at 0.72.
+       ★ The launch/brake pair is split at peak speed and the slopes are
+         MATCHED: 3*D1/T1 = 444.7 against 4*D2/T2 = 446.7, i.e. 0.4 % apart.
+         That is what makes it one movement — hard away from the line, straight
+         onto the brakes — instead of two tweens with a kink between them.
+         D1+D2 = 26 = DRIVE_DIST and the brake lands exactly on DRIVE_BY, which
+         is what keeps SL_Z, the road lettering and the match cut all valid. */
+    { key:'carY', from:HOVER_Y, to:0,    at:0.66,  dur:0.06,  ease:'power2.inOut' },
+    { key:'carZ', from:0,       to:12.21, at:0.755, dur:0.085, ease:'power3.in'  },
+    { key:'carZ', from:12.21,   to:26,    at:0.840, dur:0.120, ease:'power4.out' },
+
+    /* --- the x-ray assembly, and the solid car that replaces it -------------
+       ★ The two overlap by design: the hologram is still fading as the metal
+         arrives, so it reads as ONE object resolving rather than a cut. */
+    /* ★ THE CAR MAY NOT COMMIT BEFORE THE CAMERA HAS SWUNG CLEAR OF IT. The
+         x-ray used to open at 0.48, which is two hundredths after K4 — where
+         the lens is still tucked in close to the pack and only starting its
+         move out to K4b. The car materialises at the origin, so its bodywork
+         arrived 0.9 units from the lens: not a clip, but a frame filled edge to
+         edge with additive fresnel, which reads as a white-out rather than as a
+         car appearing. Opening at 0.52 puts the first frame of the hologram at
+         the moment the camera reaches its widest point, where the whole car is
+         in shot. Keep this behind the K4→K4b swing if you retime either. */
+    { key:'xray',  from:0,    to:1,   at:0.520, dur:0.070, ease:'power2.out'   },
+    { key:'xray',  from:1,    to:0,   at:0.635, dur:0.075, ease:'power2.inOut' },
+    { key:'scanY', from:-0.5, to:2.9, at:0.535, dur:0.130, ease:'none'         },
+    { key:'carVis',from:0,    to:1,   at:0.600, dur:0.110, ease:'power2.inOut' },
+
+    /* --- the energy grid ----------------------------------------------------
+       ★ MUST BE OFF BEFORE THE BODYWORK IS HALF SOLID. The links are additive
+         with depthWrite:false, so while they are lit they draw straight THROUGH
+         the car. carVis passes 0.5 at p~0.64; this lands on 0 at 0.62. */
+    { key:'linkGlow', from:0, to:1, at:0.30, dur:0.12, ease:'power2.out'   },
+    { key:'linkGlow', from:1, to:0, at:0.56, dur:0.06, ease:'power2.inOut' },
+
+    /* --- the world: dawn horizon → hard testing-facility light -------------- */
+    { key:'facility', from:0, to:1, at:0.46, dur:0.14, ease:'power2.inOut' },
+    { key:'ridge',    from:1, to:0, at:0.40, dur:0.14, ease:'power2.inOut' },
+
+    /* --- chrome ------------------------------------------------------------- */
+    { key:'smoke',    from:0, to:1,    at:0.748, dur:0.007, ease:'none'       },
+    { key:'hudGhost', from:0, to:0.35, at:0.92,  dur:0.08,  ease:'power2.out' },
+  ];
+
+  /* Two readers over one table. `master` is PAUSED — progress() is a
+     deterministic seek, not playback, so there is no second clock in the page
+     and purity is preserved. */
+  let master = null, evalTracks = null;
+  if (HAS_GSAP) {
+    gsap.registerPlugin(ScrollTrigger);
+    master = gsap.timeline({ paused:true });
+    master.addLabel('origin', 0).addLabel('scale', 0.22)
+          .addLabel('crucible', 0.46).addLabel('catalyst', 0.74);
+    for (const t of TRACKS) {
+      /* back.out carries its overshoot in the table's ease NAME so the fallback
+         can hold it as a plain string key; translate it back for GSAP. */
+      const ease = t.ease === 'back.out2.2' ? 'back.out(2.2)' : t.ease;
+      master.fromTo(ST, { [t.key]: t.from },
+        { [t.key]: t.to, duration: t.dur, ease, immediateRender: false }, t.at);
+    }
+    /* Pin the timeline's length to the whole page. The tracks happen to reach
+       1.0 today, but a retune that shortens the last one would otherwise
+       rescale every `at` on the page — progress() is a FRACTION of duration. */
+    master.to({ _:0 }, { _:0, duration:0 }, 1.0);
+  } else {
+    /* ★ RESET FIRST, THEN APPLY ONLY THE TRACKS THAT HAVE OPENED.
+         Two things this gets right that the obvious loop does not. Writing
+         every track unconditionally makes a not-yet-started track clamp to its
+         `from` and CLOBBER the finished track before it — `side` has four
+         tracks, so at p=.05 the second one would stamp 0 over the first one's
+         live value. And without the reset, a key whose tracks have all not yet
+         opened keeps whatever a previous forward scrub left on it, so
+         scrubbing back would not restore the opening frame. */
+    const ST0 = Object.assign({}, ST);
+    evalTracks = (pv) => {
+      Object.assign(ST, ST0);
+      for (const t of TRACKS) {
+        if (pv < t.at) continue;                 // not open yet — leave the key alone
+        const raw = (pv - t.at) / t.dur;
+        ST[t.key] = t.from + (t.to - t.from) * (raw >= 1 ? 1 : EASE[t.ease](raw));
+      }
+    };
+  }
+  /* One entry point, so applyState() does not care which reader is live. */
+  const readTimeline = HAS_GSAP ? (pv) => master.progress(pv)
+                                : (pv) => evalTracks(pv);
+
+  /* =====================================================================
+     THE CELLS — one cell, then a hundred, wired together.
+
+     The asset is 256 triangles, so cloning is free: all 100 cells are ONE
      InstancedMesh and one draw call. Every cell shares one material, which
      is what lets a single stopAt(p) write tint the whole pack at once.
 
-     Instances are ordered centre-outward and each carries its own reveal
-     threshold, so the build blooms from the first cell rather than snapping
-     between formations. The grid itself NEVER moves — cells only rise into
-     slots that were always there, which is what makes it read as assembly
-     rather than as a particle effect.
+     ★ 10 x 10, NOT 8 x 12. The storyboard asks for a hundred, and the square
+       footprint frames better besides: 1.17 x 1.17 against the old
+       0.91 x 1.43, so scene 3's low camera sees a band of grid rather than a
+       long rectangle running away from the lens.
+
+     ★ ORDERED BY CONCENTRIC SQUARE RINGS (Chebyshev), not by radius. A radial
+       order blooms outward like a particle effect; a ring order SNAPS, one
+       square shell at a time, which is what "multiplies outward and snaps
+       together into a precise grid" actually looks like. Ring r holds
+       8r cells for r>=1 (4, 12, 20, 28, 36 with the half-integer coords used
+       here) and they sum to exactly 100.
+
+     The grid itself NEVER moves — cells only arrive into slots that were
+     always there. That is what makes it read as assembly rather than as an
+     effect, and it is why the whole build is a pure function of p and
+     therefore free to run backwards.
      ===================================================================== */
-  const CELL_MAX  = 96;                  // 8 × 12
+  const CELL_MAX  = 100;                 // 10 × 10
   const CELL_H    = 0.22;                // ≈24 cm at this scene's 1 unit ≈ 1.1 m
   const CELL_PITCH = 0.13;               // model is 0.12 across → a 0.01 gap
-  const MOD_X = 3, MOD_Z = 4;            // the module: 12 cells
-  const PACK_X = 8, PACK_Z = 12;         // the pack: 96
+  const PACK_N = 10;                     // the pack: 10 × 10
 
-  /* slot layout, ordered: centre cell → the rest of the module → the pack */
+  /* ★ AN EVEN GRID HAS NO CENTRE CELL, so one is nominated. CELL0 is the cell
+       the page opens on — the single object in scene 1 — and the camera's
+       whole first act is aimed at it (see CELL0_LOOK in the ladder). It sits
+       half a pitch off the origin, which is why the early look targets are
+       offset and the later ones are not: the subject stops being a cell and
+       becomes the grid, and the aim moves with it. */
+  const CELL0 = { x: -CELL_PITCH / 2, z: -CELL_PITCH / 2 };
+
+  /* slot layout, ordered: CELL0 → the rest of its ring → each ring outward */
   const cellSlots = (() => {
     const all = [];
-    // the module is a MOD_X × MOD_Z block sitting as centrally as the pack
-    // allows; floor() rather than a distance test so the count is exactly 12
-    const modX0 = Math.floor((PACK_X - MOD_X) / 2);
-    const modZ0 = Math.floor((PACK_Z - MOD_Z) / 2);
-    for (let ix = 0; ix < PACK_X; ix++)
-      for (let iz = 0; iz < PACK_Z; iz++) {
-        const x = (ix - (PACK_X - 1) / 2) * CELL_PITCH;
-        const z = (iz - (PACK_Z - 1) / 2) * CELL_PITCH;
-        const inMod = ix >= modX0 && ix < modX0 + MOD_X &&
-                      iz >= modZ0 && iz < modZ0 + MOD_Z;
-        all.push({ x, z, d: Math.hypot(x, z), inMod });
+    for (let ix = 0; ix < PACK_N; ix++)
+      for (let iz = 0; iz < PACK_N; iz++) {
+        const cx = ix - (PACK_N - 1) / 2, cz = iz - (PACK_N - 1) / 2;
+        // half-integer coords, so the ring index is max(|cx|,|cz|) - 0.5
+        const ring = Math.max(Math.abs(cx), Math.abs(cz)) - 0.5;
+        all.push({ x: cx * CELL_PITCH, z: cz * CELL_PITCH, ring,
+                   // tie-break inside a ring by angle, so a shell fills around
+                   // rather than in raster order
+                   a: Math.atan2(cz, cx) });
       }
-    // module cells first, then everything else; each group centre-outward
-    all.sort((a, b) => (b.inMod - a.inMod) || (a.d - b.d));
-    const mod = all.filter(s => s.inMod).length;
-    return all.slice(0, CELL_MAX).map((s, i) => {
-      // reveal windows: cell 0 is there from the start; the module fills over
-      // CH2; the remaining 84 surge in at p=0.30 — the beat that carries the
-      // s1→s2 stop change, which has no luminance step of its own, and which
-      // now also lands under the company headline (see #ch1b).
-      let t0;
-      if (i === 0)          t0 = 0;
-      else if (i < mod)     t0 = 0.16 + (i / mod) * 0.12;
-      /* ★ Completes by p=0.38, not 0.44: the pack has to be FINISHED before
-         the car's ghost commits at FLY_IN (0.40). Cells still rising while
-         the thing they merge into is already on screen reads as two unrelated
-         animations rather than one handover. */
-      else                  t0 = 0.30 + ((i - mod) / (CELL_MAX - mod)) * 0.08;
-      return { x: s.x, z: s.z, t0 };
+    all.sort((p, q) => (p.ring - q.ring) || (p.a - q.a));
+    /* Reveal windows. The last cell completes at 0.435 — BEFORE the car's
+       x-ray commits at 0.48. Cells still arriving while the thing they merge
+       into is already on screen reads as two unrelated animations instead of
+       one handover. Keep that ordering if you retune. */
+    const RING_AT = [0.225, 0.245, 0.275, 0.310, 0.350];   // ring → window start
+    const RING_SPREAD = [0.010, 0.030, 0.035, 0.040, 0.050];
+    let seen = 0, lastRing = -1, ringBase = 0, ringCount = 0;
+    return all.map((s, i) => {
+      if (s.ring !== lastRing) {
+        lastRing = s.ring; ringBase = i;
+        ringCount = all.filter(q => q.ring === s.ring).length;
+      }
+      const r = Math.round(s.ring);
+      // ★ slot 0 has NO ramp. The page must OPEN on a whole cell — give it the
+      //   same window as the rest and the first frame is an empty stage that
+      //   grows an object, which reads as a loading artefact.
+      const t0 = i === 0 ? 0
+        : RING_AT[r] + ((i - ringBase) / Math.max(1, ringCount)) * RING_SPREAD[r];
+      return { x: s.x, z: s.z, t0, ring: r,
+               // unit radial, for the snap-in: each cell arrives from outside
+               d: Math.hypot(s.x, s.z) || 1,
+               nx: (s.x || 0.0001), nz: (s.z || 0.0001) };
     });
   })();
+  const CELL_W = 0.035;                  // per-cell reveal ramp width, in p
 
-  /* The pack starts sinking DURING the merge lock (PACK_MERGE_BY 0.574), so it
-     is already dissolving into the floor as it seats rather than sitting
-     there fully formed and then vanishing. Complete by 0.620 — before the wheels
-     touch at FLY_LAND 0.654, so the landing frame is the car alone. Moved with
-     the merge when the roll dropped to 4π, then through the same runway remap;
-     keep the ~0.04 lead on MERGE_BY. */
-  const CELLS_GONE_FROM = 0.536, CELLS_GONE_BY = 0.620;
-  const CELLS_GONE_SPAN = CELLS_GONE_BY - CELLS_GONE_FROM;
+  /* ★ THERE IS NO "PACK DISSOLVES" RAMP ANY MORE. The pack used to fade to
+       nothing once the car had closed over it. It now rises into the car's
+       belly and STAYS THERE — opaque bodywork is what hides it, which is both
+       cheaper and honest: the cells are still in the car, because that is the
+       whole claim the page is making. The only thing left is a cheap early-out
+       once the bodywork is solid. */
+  const CELLS_HIDDEN_FROM = 0.80;
   let cells = null, cellMat = null;
   const _cellM = new THREE.Matrix4(), _cellQ = new THREE.Quaternion();
   const _cellP = new THREE.Vector3(), _cellS = new THREE.Vector3();
+  const cellReveal = new Float32Array(CELL_MAX);   // shared with the link grid
+
+  /* --- the energy grid: what makes a hundred cells read as ONE grid --------
+     Bus bars laid across the tops of the cells, one between every orthogonally
+     adjacent pair: 9*10 longitudinal + 10*9 transverse = 180 links. One
+     InstancedMesh, one draw call, same pattern as the cells themselves.
+
+     ★ THEY SIT ABOVE THE CELL TOPS (1.04 * CELL_H), not partway up. depthWrite
+       is off but depth TEST is on, so a bar at mid-height is simply buried
+       inside the cylinders it connects and the entire lattice renders invisible
+       — which is exactly what it did at 0.62.
+
+     ★ ADDITIVE, AND THAT ONLY WORKS BECAUSE THE WORLD IS ALREADY DARK. Every
+       palette resolves its scene background to `ground` (#0B0332 on Roller) —
+       see schemeFor(). Additive blending on a near-black ground is glow; on a
+       light ground it would be invisible.
+     ★ A LINK LIGHTS WITH THE DIMMER OF ITS TWO CELLS, so the lattice knits
+       itself together BEHIND the cells as they land rather than hanging in
+       space waiting for them. That min() is the whole effect.
+     ★ depthWrite:false + additive means these draw straight THROUGH the car.
+       ST.linkGlow is timed to reach 0 at p=0.62, before the bodywork is half
+       opaque at ~0.64. If you widen the car's fade, move the link fade with
+       it or the grid will glow through the sidepods. */
+  let links = null, linkMat = null;
+  const LINK_PAIRS = [];
+  (() => {
+    const idx = new Map();
+    cellSlots.forEach((s, i) => idx.set(s.x.toFixed(4) + ',' + s.z.toFixed(4), i));
+    for (const s of cellSlots) {
+      for (const [dx, dz] of [[CELL_PITCH, 0], [0, CELL_PITCH]]) {
+        const j = idx.get((s.x + dx).toFixed(4) + ',' + (s.z + dz).toFixed(4));
+        if (j === undefined) continue;
+        const a = idx.get(s.x.toFixed(4) + ',' + s.z.toFixed(4));
+        LINK_PAIRS.push({ a, b:j, x:s.x + dx/2, z:s.z + dz/2, rot: dx ? 0 : Math.PI/2,
+                          d: Math.hypot(s.x + dx/2, s.z + dz/2) });
+      }
+    }
+  })();
+
+  function buildLinks(){
+    const LINK_W = 0.012;
+    const geo = new THREE.PlaneGeometry(CELL_PITCH, LINK_W);
+    geo.rotateX(-Math.PI / 2);           // lay it flat; +Y normal
+    linkMat = new THREE.MeshBasicMaterial({ transparent:true, depthWrite:false,
+      blending:THREE.AdditiveBlending, color:0xffffff });
+    links = new THREE.InstancedMesh(geo, linkMat, LINK_PAIRS.length);
+    links.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    links.frustumCulled = false;
+    links.renderOrder = 1;
+    // per-instance brightness rides on instanceColor
+    links.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(LINK_PAIRS.length * 3), 3);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+    const pos = new THREE.Vector3(), sc = new THREE.Vector3(1,1,1);
+    LINK_PAIRS.forEach((L, i) => {
+      q.setFromAxisAngle(new THREE.Vector3(0,1,0), L.rot);
+      pos.set(L.x, CELL_H * 1.04, L.z);
+      m.compose(pos, q, sc);
+      links.setMatrixAt(i, m);
+    });
+    links.instanceMatrix.needsUpdate = true;
+    hScene.add(links);
+  }
+
+  const _linkCol = new THREE.Color();
+  function applyLinks(pv){
+    if (!links) return;
+    const glow = ST.linkGlow;
+    links.visible = glow > 0.002;
+    if (!links.visible) return;
+    /* A charge wave running outward from CELL0. Pure in p — no accumulated
+       phase — so it scrubs both ways and screenshots reproducibly. */
+    const wave = (pv - 0.30) * 6;
+    const arr = links.instanceColor.array;
+    for (let i = 0; i < LINK_PAIRS.length; i++) {
+      const L = LINK_PAIRS[i];
+      const on = Math.min(cellReveal[L.a], cellReveal[L.b]);
+      const pulse = 0.55 + 0.45 * Math.cos(2 * Math.PI * (wave - L.d * 1.4));
+      const v = on * glow * pulse;
+      arr[i*3] = arr[i*3+1] = arr[i*3+2] = v;
+    }
+    links.instanceColor.needsUpdate = true;
+    if (linkMat) stopAt(pv, linkMat.color);
+  }
 
   function buildCells(geo, mat){
     cellMat = mat;
@@ -2878,36 +3408,27 @@ const Hero = (() => {
     cells.frustumCulled = false;          // instances move; one shared bound lies
     cells.count = CELL_MAX;
     hScene.add(cells);
+    buildLinks();
   }
 
-  /* p → every instance's matrix + the shared tint. Cells rise 0.15 units into
-     place as they reveal, and sink back out if you scroll up — the whole
-     build is a pure function of p, so it is reversible for free. */
+  /* p → every instance's matrix + the shared tint. Cells arrive by snapping
+     INWARD along their own radial with a slight overshoot, which is what makes
+     a grid look assembled rather than grown. */
+  const easeSnap = HAS_GSAP ? gsap.parseEase('back.out(2.2)') : EASE['back.out2.2'];
   function applyCells(pv){
     if (!cells) return;
-    // past the gone-ramp every instance is scaled to zero and stays there, so
-    // skip 96 matrix writes per frame for the last third of the page
-    if (pv >= CELLS_GONE_BY) { cells.visible = false; return; }
+    if (pv >= CELLS_HIDDEN_FROM) { cells.visible = false; if (links) links.visible = false; return; }
     let anyVisible = false;
     for (let i = 0; i < CELL_MAX; i++) {
       const s = cellSlots[i];
-      // ★ cell 0 has no reveal ramp. The page must OPEN on a whole cell — give
-      //   it the same 0.06 window as the rest and the first frame is an empty
-      //   stage that grows an object, which reads as a loading artefact.
-      const e = i === 0 ? 1 : smoothstep(clamp01((pv - s.t0) / 0.06));
-      // fade the pack out again once the car has closed over it. Starts AFTER
-      // the car reveal so the two overlap — for ~0.08 of the page you can see
-      // the pack through the bodywork, which is the whole point of the beat.
-      /* ★ Derived, NOT a literal. This used to read "/ 0.12", which happened
-         to equal the span — so the ramp only reached 1.0 exactly where the
-         hard early-out above kicks in, by coincidence. Move either constant
-         with a literal here and the pack hard-snaps to invisible instead of
-         fading. */
-      const gone = smoothstep(clamp01((pv - CELLS_GONE_FROM) / CELLS_GONE_SPAN));
-      const k = e * (1 - gone);
-      if (k > 0.001) anyVisible = true;
-      _cellP.set(s.x, (1 - e) * -0.15, s.z);
-      _cellS.set(k, k, k);
+      const e = i === 0 ? 1 : clamp01((pv - s.t0) / CELL_W);
+      cellReveal[i] = e;
+      if (e > 0.001) anyVisible = true;
+      const k = easeSnap(e);
+      // start 0.35 out along the radial and 0.12 high, arrive in the slot
+      const back = (1 - k) * 0.35 / s.d;
+      _cellP.set(s.x + s.nx * back, (1 - k) * 0.12, s.z + s.nz * back);
+      _cellS.set(e, e, e);
       _cellM.compose(_cellP, _cellQ, _cellS);
       cells.setMatrixAt(i, _cellM);
     }
@@ -2918,8 +3439,8 @@ const Hero = (() => {
       cellMat.emissive.copy(cellMat.color);
       cellMat.emissiveIntensity = 0.16 + 0.30 * clamp01(pv / 0.72);
     }
+    applyLinks(pv);
   }
-
   /* ---- load the cell ---------------------------------------------------
      Embedded data-URI (battery_model.js) first, path second — the same
      belt-and-braces the car uses. It costs ~1.2 MB of base64, but serving
@@ -3006,7 +3527,6 @@ const Hero = (() => {
        too. The clones are hero-only, so the fade cannot leak.
      ★ The mesh count is re-checked each frame during the fade because the
        GLB swaps in asynchronously — prep once at load time and you would
-       be fading the procedural placeholder's materials, not the real car's. */
   /* ★ Gated on CAR.seq, not on a per-frame traversal. The first version
      counted the car's meshes every frame to notice the GLB swap — a full
      graph walk on every frame from p=0.54 to the end of the page, which is
@@ -3018,175 +3538,255 @@ const Hero = (() => {
     carMatSeq = CAR.seq;
     carMats.length = 0;
     car.traverse(o => {
-      if (!o.isMesh || !o.material) return;
+      /* ★ SKIP THE X-RAY TWINS. This clones every material it finds and marks
+         it transparent; sweeping up the fresnel shells would hand them to the
+         solid fade below, which drives .opacity — a uniform they do not have —
+         and the hologram would silently stop responding to ST.xray. */
+      if (!o.isMesh || !o.material || o.userData.xray) return;
       o.material = o.material.clone();
       o.material.transparent = true;
       carMats.push(o.material);
     });
+    buildXray();
   }
+
+  /* --- the x-ray: a SEPARATE additive shell, not a transparency setting -----
+     The note on depthWrite below is right, and it is why this exists as its
+     own object. Turning the solid car half-transparent shows every internal
+     surface at once and reads as mush. An x-ray is not a transparent car; it
+     is a DENSITY image, and three things here make that read:
+
+       fresnel   pow(1 - |N·V|, 2.6) — grazing angles glow, so the silhouette
+                 and every panel edge light up. That is the carbon-fibre
+                 cross-section outline the storyboard is asking for.
+       additive  overlapping surfaces SUM. Where the lens looks through
+                 sidepod + floor + engine you get a bright core; where it looks
+                 through one skin you get a faint one. That is the whole
+                 difference between an x-ray and a ghost.
+       scan band a horizontal sheet of light at uScanY, swept from below the
+                 floor to above the airbox over p 0.535-0.665, so the car
+                 assembles band by band instead of simply fading up. The range
+                 tracks HOVER_Y — the car sits at 1.6 and stands ~1.3 tall, so
+                 -0.5 to 2.9 clears it at both ends.
+
+     ★ Twins SHARE the source geometry — no clone, no merge. Merging them into
+       one draw call is tempting and would fail: applyLengthGradient() adds a
+       vertex-colour attribute to some car meshes and not others, so their
+       attribute sets do not match and BufferGeometryUtils would drop or
+       mis-pack them. The F1 GLB is a handful of meshes; twins are fine. */
+  const xrayMat = new THREE.ShaderMaterial({
+    uniforms: { uAmount:{value:0}, uScanY:{value:-0.5}, uColor:{value:new THREE.Color(0x8FE9FF)} },
+    vertexShader: `
+      varying vec3 vN; varying vec3 vV; varying float vWorldY;
+      void main(){
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldY = wp.y;
+        vN = normalize(normalMatrix * normal);
+        vV = normalize((viewMatrix * wp).xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      uniform float uAmount; uniform float uScanY; uniform vec3 uColor;
+      varying vec3 vN; varying vec3 vV; varying float vWorldY;
+      void main(){
+        float fres = pow(1.0 - abs(dot(normalize(vN), normalize(-vV))), 2.6);
+        float band = exp(-pow((vWorldY - uScanY) * 6.0, 2.0));
+        float a = (fres * 0.85 + band * 0.55) * uAmount;
+        gl_FragColor = vec4(uColor * a, a);
+      }`,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    side:THREE.DoubleSide,
+  });
+  const xrayEdgeMat = new THREE.LineBasicMaterial({ color:0x8FE9FF, transparent:true,
+    opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
+  let xraySeq = -1;
+  const xrayNodes = [];
+  function buildXray(){
+    if (xraySeq === CAR.seq) return;
+    xraySeq = CAR.seq;
+    for (const n of xrayNodes) if (n.parent) n.parent.remove(n);
+    xrayNodes.length = 0;
+    // collect first: adding children inside traverse() mutates what it walks
+    const hosts = [];
+    car.traverse(o => { if (o.isMesh && o.geometry && !o.userData.xray) hosts.push(o); });
+    for (const h of hosts) {
+      const shell = new THREE.Mesh(h.geometry, xrayMat);
+      shell.userData.xray = true; shell.renderOrder = 3; shell.visible = false;
+      h.add(shell); xrayNodes.push(shell);
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(h.geometry, 25), xrayEdgeMat);
+      edges.userData.xray = true; edges.renderOrder = 4; edges.visible = false;
+      h.add(edges); xrayNodes.push(edges);
+    }
+  }
+  function revealXray(t){
+    for (const n of xrayNodes) n.visible = t > 0.002;
+    xrayMat.uniforms.uAmount.value = t;
+    xrayMat.uniforms.uScanY.value = ST.scanY;
+    xrayEdgeMat.opacity = t * 0.5;
+  }
+
   function revealCar(t){
-    car.visible = hShadow.visible = t > 0.002;
-    if (!car.visible) return;
+    /* ★ The x-ray exists BEFORE any solid does, so visibility is the union of
+       the two — gating on the solid fade alone would hide the hologram that is
+       supposed to precede it. */
+    const anything = t > 0.002 || ST.xray > 0.002;
+    car.visible = anything;
+    hShadow.visible = t > 0.002;          // a hologram does not cast a shadow
+    if (!anything) return;
     syncCarMats();
+    revealXray(ST.xray);
     for (const m of carMats) {
       m.opacity = t;
       /* ★ depthWrite stays ON for the whole fade. With it off, a half-opaque
          F1 shows every internal surface at once — suspension, floor, engine,
          the far side of its own bodywork — and reads as an exploded x-ray
          rather than a car materialising. Writing depth means the nearest
-         shell wins and you see one ghosted skin, which is the intent. */
+         shell wins and you see one ghosted skin, which is the intent.
+         ★ The x-ray look the storyboard wants is NOT this flag. It is the
+           separate additive shell above, which is a different object with a
+           different blend mode. Do not "simplify" the two into one. */
       m.depthWrite = true;
     }
   }
   revealCar(0);                  // the page opens on a cell, not a car
 
-  /* --- scroll timeline: keyframes across the whole story (fractions of P).
-     Camera position + look target + car orientation + scene colour, all
-     interpolated by global scroll progress.
 
-     THE LADDER — the camera retreats monotonically, because every beat is a
-     bigger object than the last and the page is one long pull-back.
-     ★ `dist` is |cam − look|, NOT |cam| — measure it that way if you re-derive
-       these. (The figures below were regenerated from the live array; the
-       previous set had drifted by up to 2 units on K2 and K4, which is how
-       framing decisions got made against numbers that were never true.)
+  /* --- the camera ladder: seven control points across scenes 1-3 -----------
+     Camera position + look target + scene colour. The TIMELINE decides how
+     fast the camera travels between these (ST.u); the SPLINE decides the path
+     it takes. Splitting those two jobs is what lets each scene have its own
+     cinematic ease without the path acquiring a corner at every keyframe.
 
-       K0  0.00  ONE cell, 24 cm tall, filling the frame           dist  0.64
-       K1  0.16  still one cell; swung off-axis as ch1 arrives     dist  0.99
-       K2  0.34  the module — 12 cells                             dist  1.90
-       K3  0.48  the pack — 96 cells, and the sky the car enters   dist  4.45
-                 from (see the tilt note on K3 itself)
-       K4  0.58  the car, mid-spin, the pack going into its floor  dist 13.28
-       K5  0.70  swung BEHIND the car; the wheels touch down       gap  11.0
-       K6  0.78  dead behind, on the centreline; the car pulls off gap  13.9
-       K7  0.87  rising, aim leading down the road to the line     gap  22.6
-       K8  1.00  behind the car on the grid — the match cut        gap  33.1
+     ★ `at` IS LOAD-BEARING. Each key's `at` is the p at which the u-track
+       reaches that key's curve parameter (i/6), so a keyframe is hit exactly
+       where it says it is. Move an `at` here and you must move the matching
+       u-track in TRACKS, or the ladder below stops describing what renders.
 
-       Closest camera-to-car approach over the whole car act, sampled along the
-       spline at 0.002 and NOT just at the keyframes, is 11.3 units — well
-       clear of the ~6-unit floor. The old orbit's worst case was the reason
-       that floor exists; a chase has no chord that crosses the subject.
+     THE LADDER — a monotone pull-back, because every beat is a bigger object
+     than the last and the page is one long retreat. Frame height at fov 38 is
+     0.6885*d, so "fills" below is the subject's height over that.
 
-     ★ From K5 on the useful number is the CAMERA-TO-CAR GAP, not |cam − look|:
-       the car is moving away down +Z through this whole stretch, so `dist` to a
-       fixed look target stopped describing the framing. The gap column above is
-       measured against flightPos(at).
+       K0  0.00  ONE cell, 24 cm tall                  d 0.64   fills ~50 %
+       K1  0.12  still one cell, swung off-axis        d 0.80   fills ~40 %
+       K2  0.22  last cell-scale frame                 d 1.10
+       K3  0.36  mid-multiplication, the grid growing  d 1.75   fills ~45 %
+       K4  0.46  all 100 cells, centred                d 2.30   fills ~62 %
+       K4b 0.52  swung wide left, clearing the car     d 4.67
+       K5  0.58  UNDER THE CHASSIS, car hovering       d 5.42
+       K6  0.74  the rig handoff pose                  d 6.26
 
-     ★ THE ENDING WAS REBUILT (K5-K8). The old ladder orbited a parked car —
-       front three-quarter at .66, broadside at .74, back round to a high grid
-       shot — and the car had nothing to do but be looked at. The camera now
-       gets behind the car during the descent and STAYS there while the car
-       drives away toward the start line. See the block on the keyframes
-       themselves, and DRIVE_* in THE FLIGHT.
+     ★ THESE DISTANCES ARE COMPUTED, NOT INHERITED. The previous ladder's
+       comments claimed the finished pack filled ~95 % of frame height at K3;
+       at the 8.1 units that key actually sat, the frame is 5.58 units tall and
+       a 0.91 x 1.43 pack fills 26 %. The prose had drifted from the numbers.
+       If you retune, recompute against 0.6885*d rather than trusting this
+       block — including this block.
 
-     ★ THESE DISTANCES ARE NO LONGER THE FRAMING. The car moves now (see THE
-       FLIGHT), so what fills the frame is |cam − car|, not |cam − look|.
-       Through the car act that runs 11.3 → 13.6 units, i.e. the car sits at
-       53-64 % of viewport height — the "make it dominant" target — without a
-       single camera position moving. The aim does the work: see the
-       look-tracking block in applyState().
+     ★ K0 sits 0.64 units from a 0.22-tall object, about 2.9x its height. The
+       asset is 256 triangles with all its detail in a normal map, so any
+       closer and it reads as a flat sticker. Do not move K0 nearer.
 
-     ★ K0 sits 0.64 units from a 0.22-tall object — about 2.9× its height.
-       The asset is 256 triangles with all of its detail in a normal map, so
-       any closer and it reads as a flat sticker. Do not move K0 nearer.
-     ★ K8 IS LOCKED to CFG.camBack (30) / CFG.camHeight (14). START ENGINE is
-       a match cut into the game, and it only works while these agree. --- */
-  const EU = (x,y,z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z));
-  /* `side` = screen-space lateral aim offset (fraction of view distance).
-     +side aims the camera right, pushing the SUBJECT to screen-LEFT; -side
-     pushes it right. Each value is chosen against the chapter that is at
-     mid-screen at that p, so the object always sits in the empty half:
-        ch1 .120 → subject R / text L      ch5 .681 → subject L / text R
-        ch2 .264 → subject R / text L      ch6 .833 → subject R / text L
-        ch3 .408 → subject L / text R      ch7 .986 → centred, finale
-        ch4 .544 → subject L / text R
-     ★ The positive hold across K4→K5 exists so the sign does not flip while
-       ch5's copy is on screen; without it the car crosses the text. */
+     ★ K5 IS THE WHOLE OF SCENE 3 AND IT ONLY WORKS BECAUSE THE CAR HOVERS.
+       Eye at y=0.30; the car sits at carY=1.6 so its floor is ~1.95; the
+       horizontal gap is ~5.3. That is 17 degrees looking UP at the belly, with
+       the lit 100-cell grid lying at y~0..0.22 as a foreground band across the
+       bottom of the frame. Both the aim height and the hover are chosen so that
+       floor AND grid fit inside one 0.6885·d frame — raise either and the grid
+       drops out of shot, which costs the beat the whole scene is built on.
+
+     ★ K5 AND K6 ARE BOTH IN FRONT OF THE CAR (+z), AND THAT IS WHY SCENE 4
+       CAN ORBIT. The rig picks the camera up at K6 and sweeps it around the
+       left side to dead astern. Starting from behind would leave nothing to
+       sweep.
+
+     ★ K4b EXISTS ONLY TO GET THE CAMERA AROUND THE CAR, and it is not
+       decoration. K4 sits behind the pack (z -1.55) and K5 in front of it
+       (z +4.60), so whatever runs between them has to cross the car's own
+       footprint. Run direct, the spline dived to 1.79 units of the car's origin
+       at p~0.51 — inside the front-left wheel arch, with the x-ray shell at
+       76 % opacity, so the frame washed out in a sheet of additive glow. K4b
+       pushes that crossing out to x=-4.6, well beyond the ~1-unit half width,
+       so the camera swings AROUND the flank and then tucks under the nose.
+       Re-run the closest-approach probe if you move any of K4 / K4b / K5: this
+       is the one place on the page where the path can re-enter the subject.
+
+     ★ NO `q` HERE ANY MORE. The car used to carry a per-keyframe heading
+       because it flew in and barrel-rolled; it now materialises in place
+       facing +Z and never rotates, so its quaternion is identity for the whole
+       page. That is match-cut invariant #2, and making it structural beats
+       slerping to something that is merely very close to identity.
+     ★ NO `side` HERE ANY MORE either — it is a timeline track now (ST.side),
+       because the aim offset has to resolve to exactly 0 before the match cut
+       and that is a statement about p, not about which segment we are in. --- */
+  const CELL0_LOOK = [CELL0.x, 0.11, CELL0.z];
   const KEYS = [
-    /* ★ |side| is much smaller through the battery act than it is on the car.
-         The offset is a fraction of view distance, so it moves a WIDE subject
-         much further than a compact one: at -0.28 the 8×12 pack walks clean
-         off the right edge. The car can take the full 0.26; a grid cannot. */
-    { at:0.00, cam:[0,0.34,-0.60],   look:[0,0.11,0], q:EU(0,0,0),      stop:'white', side:0    },
-    { at:0.16, cam:[0.62,0.40,-0.72],look:[0,0.11,0], q:EU(0,-0.7,0),   stop:'cream', side:-0.20},
-    { at:0.34, cam:[1.25,0.80,-1.25],look:[0,0.10,0], q:EU(0,0.5,0),    stop:'ink',   side:-0.10},
-    /* ★ K3 TILTED AND PULLED BACK (was cam [-3.0,2.3,-3.0] look [0,0.09,0]:
-         4.7 units out, pitched 33° down). Two separate problems, one fix:
-
-         1. At 33° down the horizon sat 14° ABOVE the top of the frame — no
-            sky on screen at all, so a car entering "from the top-right" was
-            geometrically impossible. Now 19.5° down: horizon just inside the
-            top edge.
-         2. The real blocker was never sky, it was ANGULAR SEPARATION. From
-            4.7 units the pack and a car 13 units downrange are ~70° apart —
-            more than twice the frame's half-diagonal — so no tilt could put
-            both on screen. Backing off to 8.1 units narrows that enough for
-            a genuine handover: the pack still holds the frame while the car
-            crops into the top-right corner.
-
-         Backing off also FIXES the payoff shot rather than costing it. At the
-         old distance the finished pack filled ~114 % of frame height at p=.38
-         — it completed off the edges and you never saw all 96 cells at once.
-         At 8.1 units it lands at ~95 %: full frame, nothing cropped. */
-    { at:0.468, cam:[-5.4,3.3,-5.4], look:[0,0.60,0], q:EU(0,1.05,0),   stop:'orange',side:0.14 },
-    /* ★ The car act orbits ONE WAY around the car and never cuts across it.
-         The previous run went rear-left → front-right, which are nearly
-         opposite: any interpolation between them, spline or straight line,
-         passes close to the origin. The camera dived from 11.3 units out to
-         3.9 — inside the car's own length — and back out again in the space
-         of a tenth of the page. That was the worst lurch on the page.
-         Keeping successive azimuths under ~75° apart keeps every chord
-         outside the bodywork. Verify with the closest-approach probe if you
-         move these: nothing after p=0.52 (the apex) should come within ~6 units.
-         ★ THE PROBE MUST MEASURE |cam − car|, NOT |cam|. The car is no longer
-           at the origin through this stretch, so the old origin-relative
-           version is measuring nothing. Current minimum over the car act is
-           ~11.3 at the apex — 88 % of headroom over the 6-unit floor. */
-    /* ★ K5-K8 ARE NO LONGER AN ORBIT. They used to circle the parked car —
-         front three-quarter, broadside, back round to the grid — which is how
-         you shoot a static object, and it is exactly why the ending read as
-         dead: the car had stopped and only the camera was still working.
-
-         They are now ONE SHOT FROM BEHIND. The rig swings behind the car during
-         the descent (K4 → K5), plants itself on the centreline as the wheels
-         touch, and then simply holds while the car DRIVES AWAY from it toward
-         the start line. The pull-back at the end is not the camera retreating —
-         it is the subject leaving. That is what makes it read as the run-up to
-         a race instead of a product turntable.
-
-         Azimuth steps K4→K5 ≈ 30° and K5→K6 ≈ 17°, then zero: well inside the
-         ~75° rule, and the spline no longer has any reason to cut across the
-         car because it stops going round it. Camera-to-car distance runs ~11.7
-         at touchdown to 30.0 at p=1.00, never near the ~6-unit floor.
-
-         The `q` values unwind to identity by K5 (they were 0.55 / 0.20 / 0.05)
-         so the car's heading is straight down +Z from the moment it lands —
-         you cannot drive down a road at a 30° angle to it. */
-    { at:0.553, cam:[-9.2,5.0,-8.7], look:[0,1.0,0],  q:EU(.04,1.05,0), stop:'blue',  side:0.10 },
-    /* ★ K5-K7 MOVED FORWARD WITH THE LONGER DRIVE. The car now covers 26 units
-         instead of 9, so a camera parked at the old z would have watched it
-         drive off into the distance and shrink. These sit ahead of where they
-         used to and let the gap OPEN gradually — 11.9 → 18.2 → 27.9 → 33.1 — so
-         the car pulls away from the lens rather than escaping it. Look targets
-         track down the road ahead of the car, which is what makes the start line
-         arrive in frame instead of at the edge of it. cam z is monotone through
-         K4→K8 so the spline has no backward wiggle to overshoot on. */
-    { at:0.654, cam:[-1.8,4.2,-8.5], look:[0,1.0,3],  q:EU(0,0,0),      stop:'blue',  side:0.10 },
-    { at:0.78, cam:[0,6.0,-6],       look:[0,1.5,14], q:EU(0,0,0),      stop:'blue',  side:0.08 },
-    { at:0.87, cam:[0,9.5,-5],       look:[0,1.8,27], q:EU(0,0,0),      stop:'gold',  side:0    },
-    /* ★ K8 IS STILL LOCKED TO THE GAME — the lock is RELATIVE, not absolute.
-         The match cut needs cam = car + (0, CFG.camHeight, -CFG.camBack) and
-         look = car + (0, 2, 8), with the car facing +Z. It used to read
-         [0,14,-30] / [0,2,8] only because the car rested at the ORIGIN. The car
-         now parks at (0, 0, DRIVE_DIST) — so the same lock is
-         [0, 14, DRIVE_DIST-30] / [0, 2, DRIVE_DIST+8]. These are now WRITTEN as
-         those expressions, so moving DRIVE_DIST moves them automatically; that
-         coupling used to be a request in a comment. Do not replace them with
-         literals: a camera that is even a few units off pops on START. */
-    { at:1.00, cam:[0,14,DRIVE_DIST-30], look:[0,2.0,DRIVE_DIST+8], q:EU(0,0,0), stop:'gold', side:0 },
+    { at:0.00, cam:[ 0.28, 0.30, -0.56], look:CELL0_LOOK,                     stop:'white'  },
+    { at:0.12, cam:[-0.10, 0.34, -0.74], look:CELL0_LOOK,                     stop:'cream'  },
+    { at:0.22, cam:[-0.62, 0.46, -0.92], look:[CELL0.x*0.5, 0.11, CELL0.z*0.5],stop:'ink'   },
+    { at:0.36, cam:[-1.05, 0.92, -1.30], look:[0, 0.10, 0],                   stop:'orange' },
+    { at:0.46, cam:[-1.35, 1.35, -1.55], look:[0, 0.10, 0],                   stop:'blue'   },
+    { at:0.52, cam:[-4.60, 1.05,  0.60], look:[0, 1.30, 0],                   stop:'blue'   },
+    { at:0.58, cam:[-2.60, 0.30,  4.60], look:[0, 1.35, 0],                   stop:'blue'   },
+    { at:0.74, cam:[-2.80, 0.55,  5.60], look:[0, 1.00, 0],                   stop:'gold'   },
   ];
   for (const k of KEYS) { k.camV = new THREE.Vector3(...k.cam);
     k.lookV = new THREE.Vector3(...k.look); k.colC = new THREE.Color(0xffffff); }
+
+  /* =====================================================================
+     SCENE 4 — the orbit dolly, as a CAR-RELATIVE POLAR RIG.
+
+     A world-space spline cannot track a car that is accelerating away from
+     it: you would be authoring the camera's absolute position while the
+     subject's absolute position is the thing changing. So scene 4 switches
+     rigs. Every pose below is (azimuth, radius, height) around the car,
+     wherever the car happens to be that frame.
+
+       az = 0 is dead in front of the car (+Z), az = +-180 is dead astern.
+
+       O0  0.740   -26.6 deg   r  6.26   h  0.55   the handoff — see below
+       O1  0.800   -85   deg   r  8.0    h  2.4    broadside, tyres alight
+       O2  0.870  -140   deg   r 12.0    h  4.2    swinging astern
+       O3  0.930  -170   deg   r 20.0    h  8.0    settling behind
+       O4  1.000  -180   deg   r 30.0    h 14.0    THE MATCH CUT
+
+     ★ O0 IS AUTHORED TO BE K6. Converting K6's cam [-2.8, 0.55, 5.6] about a
+       car at the origin gives exactly r=6.261, h=0.55, az=atan2(-2.8, 5.6) =
+       -26.565 deg. So at p=0.74, where rigMix opens, the two rigs agree to the
+       last decimal and the blend is a geometric no-op at its start. It only
+       diverges once the car moves, which is why no chord in the handoff can
+       cut across the bodywork.
+
+     ★ THE 6-UNIT FLOOR IS STRUCTURAL HERE, NOT SAMPLED. In polar form the
+       radius IS |cam - car| — the exact quantity the old orbit needed a probe
+       to check. min(r) = 6.26 and it only ever grows.
+
+     ★ AZIMUTH STEPS ARE 58, 55, 30, 10 DEGREES. The rule that keeps a camera
+       path outside the car is that successive azimuths stay under ~75 deg
+       apart; every step here is inside that with room to spare, and the sweep
+       is one-way around the left side so it never doubles back across the
+       subject.
+
+     ★ THIS IS NOT THE TURNTABLE THAT WAS REMOVED. What was rejected before
+       was orbiting a PARKED car — the camera working while the subject did
+       nothing. Here the car is at full throttle through the entire sweep: it
+       launches at 0.755, and O1..O3 are shot from a rig that is chasing it.
+
+     ★ O4 IS THE GAME'S CHASE CAMERA, EXPRESSED IN THIS RIG'S OWN TERMS.
+       az=-180, r=CFG.camBack, h=CFG.camHeight puts the camera at
+       car + (0, camHeight, -camBack) by construction, so the lock cannot drift
+       out of sync the way a literal would. Do not replace these with numbers.
+     ===================================================================== */
+  const DEG = Math.PI / 180;
+  const _rigPos = new THREE.Vector3(), _rigLook = new THREE.Vector3();
+  function rigPos(carPos, out){
+    const a = ST.az * DEG;
+    return out.set(carPos.x + Math.sin(a) * ST.rad,
+                   carPos.y + ST.hgt,
+                   carPos.z + Math.cos(a) * ST.rad);
+  }
+  function rigLook(carPos, out){
+    return out.set(carPos.x, carPos.y + ST.lookY, carPos.z + ST.lead);
+  }
 
   /* ★ The camera rides ONE continuous spline, not nine straight lines.
      Interpolating each segment separately and easing it with smoothstep
@@ -3203,8 +3803,6 @@ const Hero = (() => {
      tight cluster of cell keyframes at the top of the page. */
   const camCurve  = new THREE.CatmullRomCurve3(KEYS.map(k => k.camV),  false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map(k => k.lookV), false, 'centripetal');
-  const LAST_SEG   = KEYS.length - 2;   // highest segment index (8 segments)
-  const CURVE_SPAN = KEYS.length - 1;   // curve parameter denominator
   // recolour the scroll scene backgrounds from a scheme's stop map
   function setStops(stops){ for (const k of KEYS) if (stops[k.stop]) k.colC.set(stops[k.stop]); }
   const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
@@ -3221,8 +3819,6 @@ const Hero = (() => {
   const _flyPos = new THREE.Vector3(), _flyAim = new THREE.Vector3();
 
   // DOM the timeline drives
-  const heroTitle = document.getElementById('heroTitle');
-  const heroTag = heroTitle && heroTitle.querySelector('.tag');
   const railFill = document.getElementById('railFill');
   const railPct  = document.getElementById('railPct');
   const chargeRail = document.getElementById('chargeRail');
@@ -3248,7 +3844,8 @@ const Hero = (() => {
   const _accentCol = new THREE.Color();
   const _qUp = new THREE.Quaternion();     // identity — the cells' resting pose
   let lastStopHex = '';
-  let lastPct = -1, lastTagOp = '';        // memos for the per-frame chrome writes
+  let lastPct = -1, lastGhost = '';        // memos for the per-frame chrome writes
+  const hudEl = document.getElementById('hud');
 
   const smoothstep = t => t*t*(3 - 2*t);
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -3267,237 +3864,82 @@ const Hero = (() => {
   measureScrollMax();
 
   /* =====================================================================
-     THE FLIGHT — the car arrives as a jump, not as a fade-in.
+     THE CAR'S PATH — it materialises where it stands, then it leaves.
 
-     Until this existed the car was welded to the origin and only the camera
-     moved. Now the car enters from screen-right, arcs over, presents its floor
-     to the lens while the pack goes up into it, keeps spinning all the way down,
-     lands level on the road with the camera behind it, and DRIVES AWAY toward
-     the start line.
+     The old version flew the car in from screen-right on a parabola with two
+     barrel rolls and landed it on the road. That entrance does not exist in
+     this storyboard: the car now assembles IN PLACE, hovering above the array
+     the page has been building since the first frame, takes the pack up into
+     its floor, settles onto its wheels, and then launches.
 
      The beats, in p:
-       .400 FLY_IN     commits, ghosts in, nose-down, already ~2.8 units up
-       .485 ────────── pack starts leaving the origin for the chassis floor
-       .502 FLY_APEX   top of the arc; floor square to the lens at ~100° — the
-                       rotation passes THROUGH this angle, it no longer holds at it
-       .574 ────────── pack locked to the floor; the two are one object, with
-                       ≤360° of roll left to run (the budget — see PACK_MERGE_BY)
-       .553 ────────── camera begins swinging BEHIND the car (K4 → K5)
-       .40-.654   ─── two full revolutions of twist, decelerating into upright
-       .595 DRIVE_FROM forward motion starts BEFORE the wheels are down, so the
-                       car carries momentum through the landing instead of
-                       stopping in the air and setting off again
-       .62  ────────── the dive: nose tips down mid-descent, then flares level
-       .654 FLY_LAND   wheels down on the centreline, dead level, upright.
-                       Twist, dive, descent and lateral ALL resolve on this one
-                       frame — and the car is already rolling forward through it
-       .80  ────────── start line begins to emerge, far off. Held back so the
-                       horizon is genuinely EMPTY for ~Δp .15 of driving first;
-                       from there it is the CAR'S DISTANCE, not p, that resolves
-                       it (and the road lettering) out of the haze
-       .96  DRIVE_BY   parked at (0,0,DRIVE_DIST) — everything past here is the
-                       keyframe pose, and K8 is measured RELATIVE to this point
+       .480 the x-ray shell commits; the car is hovering at HOVER_Y
+       .500 the assembly scan band starts its sweep up the chassis
+       .580 solid bodywork begins to arrive under the hologram
+       .600 the pack lifts off the origin toward the belly
+       .685 pack locked to the floor — car and cells are one object
+       .660 the descent begins; they come down together
+       .720 wheels down, dead level, facing +Z
+       .755 LAUNCH — hard away from the line
+       .840 peak speed; straight onto the brakes
+       .960 parked at (0, 0, DRIVE_DIST). Everything past here is a literal.
 
-     ★ EVERY FUNCTION HERE IS A PURE FUNCTION OF p. applyState() is documented
-       as pure (see its header) because that is what makes Hero.scrub() and
-       reverse scrolling work. No dt, no accumulated state, no easing toward a
-       target — given the same p you get the same frame, forwards or backwards.
+     ★ EVERY FUNCTION HERE IS A PURE FUNCTION OF p, via ST. No dt, no
+       accumulated state. Given the same p you get the same frame, forwards or
+       backwards — that is what makes Hero.scrub() and reverse scrolling work.
 
-     ★ THE GUARDS ARE LOAD-BEARING. Each function returns a LITERAL constant
-       outside its window rather than easing to one. Past FLY_LAND pitch and
-       roll are exactly gone, so car.quaternion is bit-for-bit the keyframe
-       pose; past DRIVE_BY position is the exact literal (0,0,DRIVE_DIST). Both
-       are what K8's match cut into the game requires. A smoothstep that
-       "reaches" 1.0 is NOT the same thing: 4π through setFromAxisAngle +
-       multiply leaves ~1e-7 of quaternion error. Invisible today; a visible
-       pop the moment somebody adds a slerp downstream. Do not "simplify"
-       these into eases.
+     ★ THE GUARD IS LOAD-BEARING. carPose returns a LITERAL past DRIVE_BY
+       rather than easing to one. A smoothstep that "reaches" 1.0 is not the
+       same thing, and the match cut into the game is measured against this
+       exact point. Do not replace it with an ease.
 
-     Screen-right through the car act is world (-0.707, 0, +0.707) — checked
-     against the camera basis at p .40, K3 and K4, which agree to within 2°.
-     The car slides in along +A and resolves to the origin. --- */
-  /* ★ THE WHOLE CAR ACT WAS COMPRESSED WHEN 20vh MOVED FROM THE RUNWAY BEFORE
-       ch2 TO THE ONE AFTER IT (see the markup). The flight has to end under ch2's
-       copy — touchdown is that chapter's frame — and ch2 now centres ~.043
-       earlier, so every beat between FLY_IN and touchdown was pushed through the
-       LINEAR map  m(c) = 0.40 + (c - 0.40)·g,  g = (ch2centre - 0.40)/0.30 ≈ .848.
-       Linear matters: it preserves each beat's fraction of the flight, so the
-       roll budget below (≤360° after the merge) survives the move exactly.
-       FLY_IN itself is the anchor and does not move — everything before it keeps
-       both its pixels and its p, because total page height is unchanged.
-       If you re-time the runways again, re-measure ch2's centre in the browser
-       (the snippet at the top of this file) and re-apply the map; do not nudge
-       these one at a time. */
-  const FLY_IN = 0.40,        // car commits; ghost begins (see revealCar window)
-        FLY_APEX = 0.502,     // top of the arc; the merge beat
-        FLY_LAND = 0.654;     // wheels down — the spin, the lateral and the
-                              // descent ALL resolve exactly here
-  /* THE DRIVE. Past the landing the car does not sit still: it pulls away down
-     the road toward the start line, and the camera lets it go. This is what
-     turns the last quarter of the page from "a parked car being looked at" into
-     the run-up to a race. Scroll-driven like everything else, so it scrubs both
-     ways; smoothstep, so it pulls away and eases to a stop without a jolt. */
-  /* ★ THE DRIVE STARTS BEFORE THE WHEELS ARE DOWN, AND THAT IS THE POINT.
-       DRIVE_FROM used to be 0.72 — two hundredths PAST touchdown. The descent
-       resolves to zero velocity at FLY_LAND and the drive hadn't started yet, so
-       the car came to a complete stop in mid-air at ground level, sat there for
-       Δp .02, and then accelerated from rest down the road. That dead frame is
-       what read as an abrupt landing: real things carry their momentum THROUGH
-       the touchdown. Overlapping the drive with the descent gives the car
-       non-zero, continuous forward speed at the moment the wheels touch — it
-       flares in and rolls out, one movement.
-     ★ DRIVE_DIST is declared once, up with the environment. */
-  const DRIVE_FROM = 0.595, DRIVE_BY = 0.96;
-  const FLY_AX = -0.7071, FLY_AZ = 0.7071;
-  /* ★ Reach is 13, not more: it sets how far off-axis the car starts, and the
-     camera is still fairly close to the pack when the car commits. Every extra
-     unit of reach buys distance but costs entry visibility. */
-  const FLY_REACH = 13.0, FLY_HEIGHT = 7.0;
-  /* Half-width of the CLIMB arm only — the descent is no longer a parabola (see
-     flightPos). Deliberately WIDER than the FLY_IN → FLY_APEX span (0.102), so
-     the car enters already airborne at ~0.40 × FLY_HEIGHT rather than off the
-     floor.
-     ★ THIS SCALES WITH THE CLIMB SPAN — IT IS A RATIO, NOT A CONSTANT. Entry
-       altitude is H·(1 - (span/W_UP)²), so leaving W_UP alone while the span
-       compresses raises the entry: at 0.155 against the new 0.102 span the car
-       would come in at 0.57·H instead of 0.40·H. It has been rescaled by the
-       same factor as the span (0.185→0.155 when the span last moved, and
-       0.155→0.132 now) precisely so the entry altitude does NOT change. */
-  const FLY_W_UP = 0.132;
-  /* ★ Portrait crops hard: at the apex a broadside car already fills ~69 % of
-     a 9:16 frame, and the whole point of the trajectory is lateral excursion.
-     Shortening the reach is the same kind of viewport dependence the 1.12
-     pull-back and sideMul:0 already use — it does not break p-purity. */
-  const flyLat = () => heroMQ.matches ? 0.55 : 1.0;
-  /* ★ A 360° barrel roll is a textbook vestibular trigger. Under reduced
-     motion the roll is dropped and the arc flattened, but the car still
-     TRAVELS to the origin — so the pack merge and the K8 landing are
-     unchanged and nothing downstream has to know. */
-  const flyHeight = () => reduceMotion ? 1.5 : FLY_HEIGHT;
+     ★ THE CAR NEVER ROTATES. It faces +Z from the moment it exists, so its
+       quaternion is identity for the whole page — see the note on `q` in the
+       camera ladder. Roll, pitch, dive and the reduced-motion special case
+       that went with them are all gone.
+     ===================================================================== */
+  const DRIVE_BY = 0.96;
 
-  /* p → the car's world position.
-     The climb is a parabola arm whose vertex IS the apex, so dy/dp is zero at
-     the top; the descent is a smoothstep, which is flat at both ends — so the
-     arc is C1 across the apex AND arrives at the ground with zero vertical
-     velocity. The lateral slide is (1-v)², which is zero AND has zero
-     derivative at FLY_LAND — the car arrives ON the centreline instead of
-     drifting sideways once its wheels are down.
-     ★ THE LATERAL DECAY RESOLVES AT FLY_LAND, NOT LATER. It used to run past
-       touchdown to a separate FLY_REST, which meant a wheeled car sliding a
-       unit and a bit sideways with its tyres planted. Landing and arriving are
-       the same instant now; everything after it is forward motion only.
-     ★ The car group's origin is the TYRE CONTACT PLANE (the GLB is seated by
-       -box.min.y on load), so y=0 means wheels down.
-     ★ THE CAR'S REST POSE IS (0, 0, DRIVE_DIST), NOT THE ORIGIN. It drives away
-       down +Z after landing, so K8 and the game's match cut are RELATIVE to
-       this point — see the K8 note in the ladder. */
-  function flightPos(pv, out){
-    /* ★ Both guards are exact. The lower one also means position jumps
-       discontinuously at FLY_IN — from the origin to ~15 units out. That is
-       unobservable ONLY because revealCar() returns a hard 0 below FLY_IN and
-       the car is therefore visible:false. If you ever loosen that opacity
-       gate, a 5-unit car teleports across the frame. The two are coupled. */
-    if (pv <= FLY_IN) return out.set(0, 0, 0);
-    // parked at the far end: exact literal, so the match-cut pose is bit-exact
-    if (pv >= DRIVE_BY) return out.set(0, 0, DRIVE_DIST);
-    const v = clamp01((pv - FLY_IN) / (FLY_LAND - FLY_IN));
-    const a = FLY_REACH * (1 - v) * (1 - v) * flyLat();
-    const H = flyHeight();
-    // the drive: pure +Z, starts flat (car has settled) and ends flat (parked)
-    const drive = DRIVE_DIST * smoothstep(clamp01((pv - DRIVE_FROM) / (DRIVE_BY - DRIVE_FROM)));
-    let y;
-    if (pv <= FLY_APEX) {
-      const s = (pv - FLY_APEX) / FLY_W_UP;     // climb: parabola arm
-      y = H * (1 - s * s);
-    } else {
-      /* ★ THE DESCENT IS A SMOOTHSTEP, NOT THE MIRRORED PARABOLA ARM IT USED TO
-         BE, and there is NO LANDING BOUNCE any more. A parabola has non-zero
-         dy/dp at its root, so the car reached the ground still moving — it
-         visibly hit. The old fix was to hide that behind a 0.18-unit half-sine
-         rebound over .74-.82, which reads as an impact, which is exactly what
-         we do not want here. smoothstep is flat at BOTH ends: C1 with the climb
-         arm at the apex, and zero vertical velocity at FLY_LAND. Nothing to
-         hide, so nothing hiding it — the car floats down and settles.
-         Do not "restore" the symmetric arm: the symmetry was never visible,
-         and the bump was. */
-      y = H * (1 - smoothstep(clamp01((pv - FLY_APEX) / (FLY_LAND - FLY_APEX))));
-    }
-    if (y < 0) y = 0;
-    return out.set(FLY_AX * a, y, FLY_AZ * a + drive);
+  /* --- tyre smoke, driven by p ---------------------------------------------
+     48 puffs in the hero scene. Two windows: the launch, where the tyres light
+     up against a standing start, and a shorter one under braking. The pool is
+     pure (see makeParticles.applyP) so it scrubs both ways and reproduces
+     exactly — which matters because this page is verified by screenshot diff.
+     ★ The rear-wheel origin is derived from CAR.box, not hardcoded, for the
+       same reason packAnchor() is: a GLB re-export moves it. Car.rearWheelPos
+       belongs to the GAME car's physics state and is not usable here. */
+  const HeroSmoke = makeParticles(hScene, 48, 'puff');
+  const SMOKE_SPEC = { windows: [[0.755, 0.800], [0.755, 0.800], [0.905, 0.945]],
+                       lifeP: 0.06, scale: 0.72 };
+  const _smokeCar = new THREE.Vector3();
+  function smokeOrigin(birthP, side, out){
+    carPose(birthP, _smokeCar);
+    const b = CAR.box;
+    const halfW = b ? (b.max.x - b.min.x) * 0.42 : 0.8;
+    const rearZ = b ? b.min.z * 0.72 : -1.4;
+    return out.set(_smokeCar.x + side * halfW, _smokeCar.y + 0.18, _smokeCar.z + rearZ);
   }
 
-  /* Roll about the car's own spine. The first arm stops at ~100°, NOT 180°.
-     ★ At 180° the floor points straight UP, and this camera never rises above
-       ~18° of elevation — it would see the underside at a 20° graze. At ~100°
-       the floor is square to the lens, which is the whole point of the beat:
-       you have to actually SEE the cells go in. That angle is now reached at the
-       apex and passed THROUGH rather than held — see below. */
-  /* ★ THE SPIN RUNS ALL THE WAY TO THE GROUND — it does not finish early and
-     leave the car coasting down as a static object. It decelerates into upright
-     exactly at FLY_LAND, so the same window that lands the car also stops it
-     rotating. One continuous move: enter, present, twist, land.
+  /* ★ THE LAUNCH AND THE BRAKE ARE ONE MOVEMENT, NOT TWO TWEENS.
+       They are split at peak speed and their slopes are MATCHED, so velocity is
+       continuous across the junction and the car reads as going hard off the
+       line and straight onto the brakes rather than as two tweens with a kink
+       between them.
 
-     ★ TWO REVOLUTIONS, AND NO DWELL. This was 6π with a Δp .035 hold at the
-       presentation angle. Two things were wrong with that. The hold stopped the
-       rotation dead while the pack went in, so the merge happened during a
-       PAUSE instead of during the movement — two beats where there should be
-       one. And 6π left roughly two and a half further revolutions after the
-       pack was seated, so the car spun long past the moment the story had
-       finished telling. 4π keeps the stunt and puts ≤360° after the merge (see
-       the merge constants).
-       The presentation beat survives: the two smoothstep arms meet at the apex,
-       both with zero slope, so there is a single slow INSTANT where the floor is
-       square to the lens — a breath, not a stop.
+       Mind the exponents (see EASE): power3.in is QUARTIC and power4.out is
+       QUINTIC, so the end slopes are 4·D1/T1 and 5·D2/T2, not 3 and 4.
 
-     ★ WHOLE REVOLUTIONS ONLY. The car has to touch down wheels-first, and roll
-       is the axis that decides which way is down. Any ODD multiple of π lands it
-       on its roof. The same argument kills "half-roll plus half-yaw", which
-       sounds like it should work and does not: two half-turns about
-       perpendicular axes compose to a half-turn about the THIRD axis, so the car
-       arrives belly-up and backwards. A full turn about a 45°-tilted axis lands
-       clean but stands the car on its tail at the midpoint — a backflip, not a
-       corkscrew. Both were built and rejected on the render. If you retune this,
-       add or remove whole revolutions; do not add half-turns.
+         launch  power3.in  D1 12.21 over T1 .085  →  4·D1/T1 = 574.6
+         brake   power4.out D2 13.79 over T2 .120  →  5·D2/T2 = 574.6
 
-     ★ 4π ≡ upright, but the guard below returns a LITERAL zero past FLY_LAND
-       rather than relying on that — see the note on exact identities. */
-  const ROLL_PRESENT = 1.75, ROLL_TOTAL = 4 * Math.PI;
-  function flightRoll(pv){
-    if (reduceMotion) return 0;
-    if (pv <= FLY_IN || pv >= FLY_LAND) return 0;              // ★ exact identity
-    if (pv < FLY_APEX)  return ROLL_PRESENT * smoothstep(clamp01((pv - FLY_IN) / (FLY_APEX - FLY_IN)));
-    return ROLL_PRESENT + (ROLL_TOTAL - ROLL_PRESENT)
-      * smoothstep(clamp01((pv - FLY_APEX) / (FLY_LAND - FLY_APEX)));
+       D1 + D2 = 26 = DRIVE_DIST, landing exactly on DRIVE_BY — which is what
+       keeps SL_Z, the four ROAD_LINES z values and the match cut all valid
+       without touching any of them. Retune either half and re-solve the pair;
+       the tweens themselves live in TRACKS. */
+  function carPose(pv, out){
+    if (pv >= DRIVE_BY) return out.set(0, 0, DRIVE_DIST);   // exact — the match cut
+    return out.set(0, ST.carY, ST.carZ);
   }
-  /* Nose-down on the way up, and a DIVE through the descent that levels out
-     again before the wheels touch.
-
-     ★ The dive is sin², not a ramp, and that is the whole point. Both the value
-       AND the slope are zero at each end, so the nose drops into the descent and
-       comes back level with no corner at either boundary: the car appears to
-       tip into its approach and flare out of it, which is what "dives a bit
-       before it arrives" means. The car still LANDS perfectly level — the dive
-       lives inside the descent, it does not reach the contact frame.
-     ★ This is NOT the old -0.105 nose-UP that used to be here. That one ramped
-       in across the whole descent and was still unwinding while the car met the
-       ground, so the car visibly rotated as it touched: half of what read as a
-       collision. Sign and shape both matter; do not "simplify" this to a lerp. */
-  const DIVE = 0.15;                  // rad, nose-down, peaks mid-descent
-  function flightPitch(pv){
-    if (pv <= FLY_IN || pv >= FLY_LAND) return 0;               // ★ exact identity
-    if (pv < FLY_APEX)
-      return 0.244 * (1 - smoothstep(clamp01((pv - FLY_IN) / (FLY_APEX - FLY_IN))));
-    const s = Math.sin(Math.PI * clamp01((pv - FLY_APEX) / (FLY_LAND - FLY_APEX)));
-    return DIVE * s * s;
-  }
-
-  /* ★ THERE IS NO POST-LANDING YAW "SHOWCASE" ANY MORE (there was a 180°
-     broadside sweep here). It was solving the wrong problem: the car had
-     nothing to do after landing because the camera was still orbiting it like
-     an object on a turntable. The car now DRIVES (see DRIVE_* in flightPos) and
-     the camera sits behind it, which gives the same "still performing" beat as
-     forward motion instead of as a pirouette — and sets up the grid. If you
-     want more life at the end, lengthen the drive; do not re-add a spin. */
 
   /* The pack's seat on the monocoque floor, behind the cockpit. Derived from
      CAR.box — never hardcoded, because the plate at makeCarLogos() and the
@@ -3509,44 +3951,38 @@ const Hero = (() => {
     return out.set(0, b.min.y + 0.06 * H, b.min.z + 0.42 * L);
   }
 
-  /* The pack leaves the origin and locks onto the chassis floor, then rides
-     the car through the rest of the roll — so the two stop being two objects.
+  /* The pack leaves the origin and rises into the hovering chassis, then the
+     two descend together as one object.
      ★ cells stays a SIBLING of car in hScene. Parenting it under `car` looks
-       tidier and breaks two things silently: syncCarMats() traverses `car`
-       and CLONES every material it finds (InstancedMesh.isMesh is true), which
+       tidier and breaks two things silently: syncCarMats() traverses `car` and
+       CLONES every material it finds (InstancedMesh.isMesh is true), which
        orphans the cellMat handle stopAt() paints through — the pack would
        quietly stop tracking the live stop — and revealCar() sets
        car.visible=false below its window, which would hide the whole battery
        act. Driving the object transform costs nothing and avoids both.
      ★ applyCells() needs no change: its per-instance matrices are the pack's
-       INTERNAL layout, and this is the transform that carries that layout. */
-  /* ★ MERGE_BY IS SET BY THE ROLL BUDGET, NOT BY EYE. The rule is that once the
-       pack is seated the car may turn AT MOST one more full revolution before it
-       lands — past that the spin stops reading as the same movement and starts
-       reading as the car showing off on its own.
-       Phase-2 roll is  roll(p) = ROLL_PRESENT + (4π - ROLL_PRESENT)·S(u),
-       u = (p - FLY_APEX)/(FLY_LAND - FLY_APEX), S = smoothstep. Remaining ≤ 2π
-       means roll ≥ 2π, i.e. S(u) ≥ (2π - 1.75)/(4π - 1.75) = 0.4191 → u ≥ 0.4459.
-       MERGE_BY sits at u = 0.472, where the roll is 6.708 rad — so 5.858 rad,
-       335.6°, UNDER ONE TURN, is left to touchdown. The budget is expressed in u
-       (the flight's own fraction), which is why the runway re-timing could move
-       both of these through a linear map without recomputing anything.
-     ★ MERGE_FROM is MID-CLIMB, with the rotation live. The pack locks on across
-       ~0.8 of a revolution straddling the apex, so it is visibly mating with a
-       moving car instead of being placed on a parked one. If the cells strobe
-       against the spin, move FROM to the apex — do not re-introduce a hold. */
-  const PACK_MERGE_FROM = 0.485, PACK_MERGE_BY = 0.574;
+       INTERNAL layout, and this is the transform that carries that layout.
+     ★ THE MERGE COMPLETES BEFORE THE DESCENT DOES. Seating at .685 against
+       wheels-down at .720 means the last of the travel is car-and-pack moving
+       as one — if the pack were still climbing while the car was landing you
+       would see two objects arriving separately at the same place.
+     ★ The link grid is dark by .62, before this finishes. That is deliberate:
+       the bus bars are additive and would otherwise glow through the floor
+       they have just been tucked under. */
+  const PACK_MERGE_FROM = 0.600, PACK_MERGE_BY = 0.685;
   const _packL = new THREE.Vector3();
   function applyPack(pv){
     if (!cells) return;
     const m = smoothstep(clamp01((pv - PACK_MERGE_FROM) / (PACK_MERGE_BY - PACK_MERGE_FROM)));
     // ★ explicit reset, not just an early return — scrubbing backwards past
     //   the merge must put the pack back at the origin, or it stays welded to
-    //   a car that has since flown away.
-    if (m <= 0) { cells.position.set(0, 0, 0); return; }
+    //   a car that has since driven away.
+    if (m <= 0) { cells.position.set(0, 0, 0); if (links) links.position.set(0,0,0); return; }
     packAnchor(_packL).applyQuaternion(car.quaternion).add(car.position);
     cells.position.set(0, 0, 0).lerp(_packL, m);
     cells.quaternion.copy(_qUp).slerp(car.quaternion, m);
+    // the bus bars ride with the cells they connect
+    if (links) { links.position.copy(cells.position); links.quaternion.copy(cells.quaternion); }
   }
 
   /* --- the wordmark's flight: hero centre → section 01's title slot ---------
@@ -3633,7 +4069,11 @@ const Hero = (() => {
      rendered value doesn't touch the DOM at all. */
   let lastHintOp = '';
   function applyScrollChrome(pv){
-    startWrap.classList.toggle('on', pv > 0.965);
+    /* ★ 0.94, not 0.965. The invest button now pulses, and a pulse needs a
+         beat or two on screen to establish itself as one — at 0.965 it faded
+         in with barely a scroll-length left and read as a static button that
+         happened to be glowing. */
+    startWrap.classList.toggle('on', pv > 0.94);
     const h = Math.max(0, 1 - pv * 6).toFixed(3);
     if (h !== lastHintOp) { scrollHint.style.opacity = h; lastHintOp = h; }
   }
@@ -3641,7 +4081,25 @@ const Hero = (() => {
     pTarget = clamp01(scrollY / SCROLL_MAX);
     applyScrollChrome(pTarget);
   }
-  addEventListener('scroll', onScroll, { passive:true });
+  /* ★ ScrollTrigger owns scroll→progress; the damper in frame() keeps owning
+       SMOOTHING. Deliberately not `scrub` — stacking ScrollTrigger's own
+       easing on top of the existing damper gives a double-smoothed mush, and
+       it would put GSAP's ticker in the page as a second animation clock
+       beside the one rAF loop that already exists.
+     ★ start:0 / end:'max' reproduces scrollY / (scrollHeight − innerHeight)
+       EXACTLY, which is the whole point: every p constant in this file was
+       measured against that formula and keeps its meaning across the
+       migration. No pin and no snap, for the same reason — both would change
+       the scroll arithmetic the page is calibrated against. */
+  if (HAS_GSAP) {
+    ScrollTrigger.create({
+      trigger: document.body, start: 0, end: 'max',
+      onUpdate: self => { pTarget = clamp01(self.progress); applyScrollChrome(pTarget); },
+      onRefresh: () => { measureScrollMax(); measureDock(); },
+    });
+  } else {
+    addEventListener('scroll', onScroll, { passive:true });
+  }
 
   /* --- drag tumble (disabled once the spin-down has begun) --- */
   function onDown(e){
@@ -3735,9 +4193,17 @@ const Hero = (() => {
         float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
         void main(){
           vec2 frag = vUv * u_res;
-          // u_scene holds the car on a transparent bg; rebuild the normal frame
+          /* ★ u_scene now holds the WHOLE frame, backdrop included, because the
+             backdrop mesh paints colour into the target while deliberately
+             writing alpha 0 (see the note on backdropMat). Alpha is therefore
+             still purely the car's coverage — which is all that carMask below
+             ever wanted — and there is nothing left to rebuild here. The old
+             mix(u_bg, …) reconstructed a flat background that no longer exists;
+             keeping it would have painted over the horizon.
+             ★ NO BACKTICKS IN THIS COMMENT. It lives inside a JS template
+               literal, so one would close the shader source mid-string. */
           vec4 hi = texture2D(u_scene, vUv);
-          vec3 normal = mix(u_bg, hi.rgb, hi.a);
+          vec3 normal = hi.rgb;
           vec2 cellOrigin = floor(frag / u_cell) * u_cell;
           vec2 cellCenter = (cellOrigin + 0.5 * u_cell) / u_res;
           vec4 cell = texture2D(u_scene, cellCenter);
@@ -3836,54 +4302,62 @@ const Hero = (() => {
      Keeping this side of the loop time-independent is also what makes the
      whole story reversible: scrolling up runs the same code with a smaller p. */
   function applyState(){
-    // locate the active keyframe segment for the current scroll progress
-    let i = 0;
-    while (i < LAST_SEG && p > KEYS[i+1].at) i++;
-    const a = KEYS[i], b = KEYS[i+1];
-    const tLin = clamp01((p - a.at) / (b.at - a.at));
-    /* Ease only the FIRST and LAST segments, so the page settles when it
-       arrives and when it lands. Easing the middle ones too is what put a
-       full stop at every interior keyframe. */
-    const t = (i === 0 || i === LAST_SEG) ? smoothstep(tLin) : tLin;
+    /* ★ FIRST STATEMENT, ALWAYS. Everything below reads ST, and ST is only
+       correct for this p once the timeline has been seeked. Note this is a
+       SEEK on a paused timeline, not playback — no clock, no dt — which is
+       what keeps this whole function a pure function of p. */
+    readTimeline(p);
 
-    // one continuous path; control point i sits at curve parameter i/(N−1)
-    camCurve.getPoint((i + t) / CURVE_SPAN, camPos);
-    lookCurve.getPoint((i + t) / CURVE_SPAN, lookAt);
+    // one continuous path; ST.u is the curve parameter the timeline is easing
+    camCurve.getPoint(ST.u, camPos);
+    lookCurve.getPoint(ST.u, lookAt);
 
     // where the car is this frame — the camera and the pack both need it
-    flightPos(p, _flyPos);
+    carPose(p, _flyPos);
 
-    /* ★ Through the car act the subject is no longer the origin, so the AIM
-       has to follow it. This is the whole camera change: at the apex the car
-       is only 11 units away but sits 64° off-axis with the aim still on the
-       origin, and the frame's half-diagonal is ~36° — it would simply not be
-       on screen. Moving the aim (rather than the rig) is also what makes the
-       camera read as "simplifying": it stops orbiting, because the aim is
-       doing the work now.
-       ★ The ramp starts at .42, just after the car commits — NOT at K3. The
-         pack and the car cannot both be in a 38° frame here (they are ~65°
-         apart at .42), so this is a handover, not a compromise: the pack owns
-         the frame through .46, the aim crosses over .46-.50, and the car is
-         inside the frame from p≈.47. Starting it later leaves the car off
-         screen until .54 and the entry never reads.
-       ★ It returns to EXACTLY 0 by p=0.78 — K8's look target, and therefore
-         the match cut, is untouched. The ramp-out is now EARLY and deliberate:
-         once the camera is behind the car (K5/K6) the aim has to be handed back
-         to the look-curve, which leads DOWN THE ROAD toward the start line
-         rather than staying pinned to the car. Keeping the track alive through
-         the drive would glue the aim to the bodywork and kill the sense of the
-         line arriving from the horizon. */
-    const trackW = smoothstep(clamp01((p - 0.417) / 0.102))
-                 * (1 - smoothstep(clamp01((p - 0.620) / 0.102)));
-    if (trackW > 0) { _flyAim.copy(_flyPos); _flyAim.y += 0.9; lookAt.lerp(_flyAim, trackW); }
+    /* --- scene 4: blend the world-space spline into the car-relative rig ----
+       ST.rigMix opens at p=0.74, exactly where ST.u reaches 1.0, and O0 is
+       authored to be that last keyframe's pose — so this lerp is a geometric
+       no-op at its start and only separates once the car begins to move. That
+       is what keeps the handoff from cutting a chord across the bodywork. */
+    if (ST.rigMix > 0) {
+      rigPos(_flyPos, _rigPos);
+      rigLook(_flyPos, _rigLook);
+      camPos.lerp(_rigPos, ST.rigMix);
+      lookAt.lerp(_rigLook, ST.rigMix);
+    }
 
     // portrait: pull the camera back and centre the car so it's never cropped
     if (heroMQ.matches) camPos.sub(lookAt).multiplyScalar(1.12).add(lookAt);
+
+    /* ★ THE MATCH CUT, AS AN EXACT LITERAL, AND IT RUNS LAST.
+       Past 0.99 the rig's own arithmetic already lands on the game's chase pose
+       — but "already lands on" is a floating-point claim, and the cut into the
+       race pops visibly if the camera is a fraction out. So the last hundredth
+       of the page is written rather than computed.
+
+       ★ IT HAS TO COME AFTER THE PORTRAIT PULL-BACK, not before. Applied first,
+         the 1.12 scale above then multiplied the literal and left mobile at
+         (0, 15.44, -8.56) against a game camera parked at (0, 14, -4) — a pose
+         that pops on START on every phone, and only on phones. The game builds
+         its chase camera straight from CFG.camBack / CFG.camHeight with no
+         viewport adjustment of its own, so the correct finale framing on mobile
+         is the unadjusted one: whatever the rest of the page does for portrait,
+         this frame has to agree with the renderer that takes over from it.
+         Nothing may modify camPos or lookAt below this point. */
+    if (p >= 0.99) {
+      camPos.set(0, CFG.camHeight, DRIVE_DIST - CFG.camBack);
+      lookAt.set(0, 2, DRIVE_DIST + 8);
+    }
     hCam.position.copy(camPos);
-    // slide the aim sideways (screen space) so the car sits opposite the text
-    // (disabled on mobile — sideMul 0 — to keep the car centred and fully visible)
-    const sideMul = heroMQ.matches ? 0 : 1;
-    const side = (a.side + (b.side - a.side) * t) * sideMul;
+    /* Slide the aim sideways (screen space) so the subject sits opposite the
+       copy. Disabled on mobile — sideMul 0 — to keep the subject centred.
+       ★ ST.side is exactly 0 for p >= 0.93 (see TRACKS), which is what lets
+         this sit below the match-cut literal at all: a non-zero value here
+         would rotate the aim straight back off it. That is the quiet failure
+         mode — a few degrees of pop on START that reads as a rendering glitch
+         rather than as a timeline bug. */
+    const side = ST.side * (heroMQ.matches ? 0 : 1);
     if (side) {
       vDir.subVectors(lookAt, camPos);
       const dist = vDir.length(); vDir.normalize();
@@ -3891,98 +4365,75 @@ const Hero = (() => {
       lookAt.addScaledVector(vRight, side * dist);
     }
     hCam.lookAt(lookAt);
-    hScene.background.copy(a.colC).lerp(b.colC, t);
 
-    // car orientation: first segment blends live free-spin → K1 pose
-    if (i === 0) qCar.copy(qFree).slerp(b.q, t);
-    else         qCar.copy(a.q).slerp(b.q, t);
-    car.quaternion.copy(qCar);
+    /* Scene background: the stop the ladder is currently between. Every
+       palette resolves all six stops to the same `ground`, so this is a flat
+       colour in practice — the ramp tints the SUBJECT (see schemeFor). The
+       machinery stays because a scheme is free to stop doing that. */
+    {
+      const f = ST.u * (KEYS.length - 1);
+      const i = Math.min(KEYS.length - 2, Math.max(0, Math.floor(f)));
+      hScene.background.copy(KEYS[i].colC).lerp(KEYS[i+1].colC, f - i);
+    }
 
-    /* ★ FLIGHT RIDES ON TOP of the keyframe pose, POST-multiplied, so the
-       roll happens about the car's OWN spine. Pre-multiplying would roll
-       about world Z — and since the KEYS yaws run 0.5 → 1.05 → 0.55 rad
-       through the car act, the car's spine is up to 60° off world Z, so that
-       version reads as a drunken wobble rather than a barrel roll.
-       The KEYS slerp still owns heading; flight owns the tumble and the
-       position. Both collapse to exact identity past their windows (see the
-       guards in THE FLIGHT) — that is what keeps K8 bit-exact. */
-    const flyPitch = flightPitch(p);
-    if (flyPitch) { _qPitch.setFromAxisAngle(eX, flyPitch); car.quaternion.multiply(_qPitch); }
-    const flyRoll = flightRoll(p);
-    if (flyRoll)  { _qRoll.setFromAxisAngle(eZ, flyRoll);   car.quaternion.multiply(_qRoll); }
+    /* ★ THE CAR NEVER ROTATES. It materialises facing +Z and stays there, so
+       identity is asserted rather than arrived at — match-cut invariant #2. */
+    car.quaternion.identity();
     car.position.copy(_flyPos);
 
-    /* The arrival cell answers drag-to-tumble — without this the gesture
-       spins a car nobody can see yet. Only instance 0 is up at this point,
-       so rotating the whole InstancedMesh rotates exactly that one cell; by
-       p=0.16, when the module starts filling in, the grid is upright again. */
+    /* The arrival cell answers drag-to-tumble — without this the gesture spins
+       a car nobody can see yet. Only instance 0 is up at this point, so
+       rotating the whole InstancedMesh rotates exactly that one cell; by p=0.22,
+       when the ring build starts, the grid is upright again. */
     if (cells) {
-      const settle = smoothstep(clamp01(p / 0.16));
+      const settle = smoothstep(clamp01(p / 0.20));
       cells.quaternion.copy(qFree).slerp(_qUp, settle);
     }
 
     /* ★ ORDER IS LOAD-BEARING HERE. applyPack() reads car.quaternion and
-       car.position, so it must run after the flight composition above; and it
-       writes cells.quaternion, so it must run after the arrival-tumble block,
-       which writes cells.quaternion unconditionally and would clobber the
-       merge if it came second. applyCells() last — it only touches the pack's
-       internal per-instance layout, which is independent of both. */
+       car.position, so it must run after the pose above; and it writes
+       cells.quaternion, so it must run after the arrival-tumble block, which
+       writes cells.quaternion unconditionally and would clobber the merge if it
+       came second. applyCells() last — it only touches the pack's internal
+       per-instance layout, which is independent of both. */
     applyPack(p);
-    // the cells build; the car flies in and the pack goes up into its floor
     applyCells(p);
-    /* ★ The car now appears at p=0.40 — DELIBERATELY, and the old warning
-       that it "must not appear before K3" no longer applies. That was true
-       while the car sat at the origin 4.8 units from K3's lens, where a
-       5-unit car filled the whole frame and buried the pack. It is now ~12
-       units downrange on the flight path when it first shows, at 8 % opacity,
-       cropped into the top-right corner. See THE FLIGHT.
-       ★ The hard 0 below FLY_IN is not cosmetic — it is what makes the
-         position discontinuity at FLY_IN unobservable. Read flightPos()'s
-         note before widening this window. */
-    /* ★ The leading smoothstep is NOT decoration — it is the other half of
-       flightPos()'s guard. flightPos returns the origin for pv <= FLY_IN and
-       the far end of the trajectory immediately above it, so if opacity
-       stepped straight to 0.08 at FLY_IN you would get one frame of ghost car
-       sitting on top of the pack before it teleports 15 units away. Zero here
-       at exactly FLY_IN, ghost by .42, solid by .587 — comfortably before the
-       wheels touch. The ramp moved with the rest of the car act when the
-       runways were re-timed; keep it inside the flight window. */
-    const carT = smoothstep(clamp01((p - FLY_IN) / 0.02))
-      * (0.08 + 0.92 * smoothstep(clamp01((p - 0.434) / 0.153)));
-    revealCar(carT);
-    /* The contact shadow is the ONLY altitude cue before the ground arrives,
-       and it used to be a static disc at the origin — which would now sit
-       under nothing while the car is seven units up and fifteen out. It
-       tracks the car in x/z, and shrinks and fades with height. At y=0 the
-       k term is 1, so it lands on exactly the original 0.72/1.05/0.12.
+
+    /* The car: hologram first, metal under it. revealCar() reads ST.xray for
+       the shell and takes the solid fade as its argument, so both layers are
+       driven from the one timeline. */
+    revealCar(ST.carVis);
+
+    /* The contact shadow is the only altitude cue before the ground arrives.
+       It tracks the car in x/z and shrinks and fades with height, so it reads
+       as the car hovering rather than as a disc parked under nothing.
        ★ y stays at 0.05: clear of hGround (-0.02) and the start line (+0.02),
          so nothing z-fights when the world fades up underneath it. */
     if (hShadow.visible) {
       const k = 1 / (1 + _flyPos.y * 0.28);
       hShadow.position.set(_flyPos.x, 0.05, _flyPos.z);
       hShadow.scale.set(0.72 * k, 1.05 * k, 1);
-      hShadow.material.opacity = 0.12 * k * carT;
+      hShadow.material.opacity = 0.12 * k * ST.carVis;
     }
-    /* The GROUND arrives before the wheels reach it — touchdown is at p=0.654,
-       and a car landing on nothing and then growing a road under itself reads as
-       a bug, not as restraint. Full tarmac by .62.
-       The START LINE is a different beat and runs LAST. The two used to share
-       one window, which lit the grid under BEAT 2 — the race was visibly about
-       to begin while the copy was still on the lab.
-       ★ THE LINE IS HELD BACK UNTIL .80 — the horizon stays EMPTY for the first
-         stretch of the drive. Touchdown is .654, so that is Δp ≈ .146 of driving
-         with nothing ahead but road — roughly three seconds at an ordinary
-         scroll pace, and the reason 20vh was moved into the runway after ch2.
-         Expressed as scroll distance rather than as a clock, so the page stays a
-         pure, reversible function of p.
-       ★ BOTH THE LINE AND THE LETTERING NOW TAKE THE CAR'S z. They emerge as a
-         function of how far the car still has to go, not on a p timer — which is
-         what makes them read as approaching scenery. Passing _flyPos is free: it
-         was computed for the car a few lines up. */
-    revealGround(clamp01((p - 0.536) / 0.085));
+
+    /* The GROUND arrives before the wheels reach it — touchdown is at p=0.720,
+       and a car landing on nothing and then growing a road under itself reads
+       as a bug, not as restraint. Full tarmac by .67.
+       The START LINE is a different beat and runs LAST: it is held back so the
+       horizon stays EMPTY through the launch, and from there it is the CAR'S
+       DISTANCE, not p, that resolves it (and the road lettering) out of the
+       haze. Lighting it earlier gives the ending away.
+       ★ BOTH THE LINE AND THE LETTERING TAKE THE CAR'S z. Passing _flyPos is
+         free — it was computed for the car a few lines up. */
+    revealGround(clamp01((p - 0.600) / 0.07));
     revealStartLine(p, _flyPos.z);
-    // the road lettering, once there is a road to paint it on
     revealRoadText(p, _flyPos.z);
+
+    // tyre smoke off the launch and the brake — the one dt-free particle pool
+    HeroSmoke.applyP(p, ST.smoke, SMOKE_SPEC, smokeOrigin);
+
+    // the world's light: calm dawn → the hard contrast of a test facility
+    applyWorldLight(p);
 
     /* ONE value paints the page — cells, rail, accent words, the button.
        ★ Quantised to 240 steps before the write. Setting a custom property on
@@ -4013,12 +4464,32 @@ const Hero = (() => {
       railPct.textContent = pct + '%';
       lastPct = pct;
     }
-    // The tagline still fades; the wordmark instead flies down into ch1.
-    // Faster than the old 1-p*5 so it clears before ch1 centres — otherwise it
-    // sits on top of that chapter's lede while the logo is landing.
-    if (heroTag) {
-      const tagOp = clamp01(1 - p * 12).toFixed(3);
-      if (tagOp !== lastTagOp) { heroTag.style.opacity = tagOp; lastTagOp = tagOp; }
+    /* The race HUD ghosts up behind the finale, so the game reads as waiting
+       rather than as something that appears out of nowhere on START.
+       ★ Memoised and quantised like the two writes above — this is a style
+         property on a fixed overlay, so an unguarded per-frame write costs a
+         composite every frame for the last twelfth of the page.
+       ★ The PREVIEW state is not the LIVE state. body.hud-preview shows the
+         panel at low opacity with pointer-events off; Game.reset() clears the
+         class when the race actually starts. Never let the two coexist — a
+         half-transparent HUD you cannot click is a bug report waiting to
+         happen. */
+    const ghost = ST.hudGhost.toFixed(3);
+    if (ghost !== lastGhost) {
+      const on = ST.hudGhost > 0.002;
+      document.body.classList.toggle('hud-preview', on);
+      document.documentElement.style.setProperty('--hudGhost', ghost);
+      /* ★ THE DISPLAY HAS TO BE WRITTEN INLINE, not left to the class. Game's
+         state machine sets ui.hud.style.display directly when it leaves the
+         race, and an inline declaration beats any stylesheet selector no matter
+         how specific — so the class alone produced a HUD that was visible,
+         correctly tinted, at the right opacity, and display:none. Writing the
+         same property from here competes on equal terms; clearing it to ''
+         hands the element back to the stylesheet, where #hud is display:none
+         anyway. The alternative was !important, which would then have had to
+         win against the LIVE race too. */
+      hudEl.style.display = on ? 'block' : '';
+      lastGhost = ghost;
     }
     // ★ pTarget, not p — the dock tracks the RAW scroller (see dockHeroLogo).
     dockHeroLogo(pTarget);
@@ -4048,6 +4519,12 @@ const Hero = (() => {
     measureScrollMax();                   // layout may have changed while away
     scrollTo(0, scrollToEnd ? SCROLL_MAX : 0);
     onScroll();
+    /* ★ ScrollTrigger caches the document height it measured at setup. The
+       race hid the story for the duration, so that cache is stale by exactly
+       the amount that matters — without this the trigger maps the restored
+       scroll position onto the OLD range and the hero comes back at the wrong
+       p. measureScrollMax() above fixes our own copy; this fixes GSAP's. */
+    if (HAS_GSAP) ScrollTrigger.refresh();
   }
   /* Jump the timeline to an exact p and paint one frame, bypassing both the
      scroll position and the rAF easing. This is how you check the story
@@ -4056,8 +4533,22 @@ const Hero = (() => {
      because applyState() reads p and nothing else. */
   function scrub(pv){
     p = pTarget = clamp01(pv);
-    // the bits onScroll() normally owns, so a scrubbed frame is a faithful
-    // preview and not just the 3D half of one
+    /* ★ MOVE THE ACTUAL SCROLLER, don't just set p. Two reasons, and the
+       second one is why this used to be wrong:
+
+       1. A scrubbed frame is supposed to be a FAITHFUL preview, and half of
+          this page is DOM — the copy, the reveals, the docked wordmark. Setting
+          p alone renders the 3D at pv over text still sitting at the top of the
+          page, which is a frame that never occurs in real use.
+       2. ScrollTrigger is a SECOND writer of pTarget. It updates from the real
+          scroll position on GSAP's ticker, so a p written here was silently
+          reverted within a frame or two and the scrubbed pose sprang back.
+          Anything that samples after a rAF — a screenshot harness, most
+          obviously — saw p≈0 no matter what it asked for.
+
+       Scrolling first makes every driver agree on where we are, so there is
+       nothing left to fight over. */
+    scrollTo(0, p * SCROLL_MAX);
     applyScrollChrome(pTarget);
     applyState();
     return p;
@@ -4067,7 +4558,37 @@ const Hero = (() => {
      accent memo has to be dropped or the cached hex would suppress the write
      and the page would keep the old scheme's accent until the next scroll. */
   function repaint(){ if (!active) return; lastStopHex = ''; applyState(); }
-  return { fadeOut, show, setStops, scrub, repaint };
+  /* Debug surface. Not used by the page — it exists so the verification pass
+     can assert the camera invariants numerically instead of eyeballing a
+     screenshot, which is the only way the match-cut lock stays honest. */
+  function probe(pv){
+    const q = scrub(pv);
+    /* ★ Strip underscore keys. GSAP attaches its own cache object to any target
+       it animates (ST._gsap), so a naive copy carries a non-numeric field that
+       exists on the GSAP path and not on the fallback — which makes the two
+       look different when every value they actually drive is identical. */
+    const st = {};
+    for (const k in ST) if (k[0] !== '_') st[k] = ST[k];
+    return { p:q, ST:st,
+      cam:hCam.position.toArray(), look:lookAt.toArray(),
+      car:car.position.toArray(), carQ:car.quaternion.toArray(),
+      camToCar:hCam.position.distanceTo(car.position),
+      /* Distance to the car's BOUNDING BOX, not its origin — the origin sits at
+         the tyre contact plane, so an origin measurement reads ~1.5 units low
+         at the nose and lets a camera clip the bodywork while the number still
+         looks safe. Zero means the lens is inside the car. */
+      camToBody:(() => {
+        const b = CAR.box; if (!b) return Infinity;
+        const bb = new THREE.Box3(b.min.clone(), b.max.clone())
+          .applyMatrix4(car.matrixWorld);
+        return bb.distanceToPoint(hCam.position);
+      })(),
+      carShown: Math.max(ST.xray, ST.carVis),
+      cells: cells ? cells.visible : null,
+      cellsUp: cellReveal.reduce((a,b) => a + (b > 0.5 ? 1 : 0), 0),
+      links: links ? links.visible : null };
+  }
+  return { fadeOut, show, setStops, scrub, repaint, probe };
 })();
 
 /* =====================================================================
@@ -4227,7 +4748,8 @@ const Hero = (() => {
         setThemeFg(e.target.dataset.theme);
       }
   }, { rootMargin:'-48% 0px -48% 0px', threshold:0 });
-  document.querySelectorAll('#story [data-theme], .ticker[data-theme]')
+  // (the .ticker[data-theme] half of this selector went with the marquees)
+  document.querySelectorAll('#story [data-theme]')
     .forEach(el => themeIO.observe(el));
 
   // paint the saved choice (or the default) now
@@ -4376,6 +4898,11 @@ const Game = (() => {
   };
 
   function reset(){
+    /* ★ Drop the scroll story's ghosted HUD before the live one comes up. The
+       preview and the real thing style the same element from two different
+       rules; leaving the class on would cap the live HUD at --hudGhost and
+       keep the pause button hidden for the whole race. */
+    document.body.classList.remove('hud-preview');
     Car.reset();
     Particles.clear();
     G.raceTime = 0; G.topSpeed = 0; G.driftScore = 0;

@@ -10,24 +10,22 @@
 <style>
   /* ============ GLOBAL / RESET ============ */
   :root{
-    /* ---- FOUR STOPS: the roller palette ----------------------------------
+    /* ---- FOUR STOPS: the TWILIGHT palette, and it is the shipped one -------
        The world is ONE colour (--ground). The only chroma on the page is a
        four-stop gradient the scroll walks through, ordered by LUMINANCE so
        the page literally brightens as the pack charges:
-         #965138 L.127 earth  →  #8A4D93 L.128 chemistry
-         #73A059 L.295 efficiency  →  #49CCDE L.499 current
-       Sourced from the lilac-breasted roller (see Brand Breakdown Doc_1.pdf).
-       ★ s1→s2 is 1.01:1 in luminance — a pure hue shift. That boundary
-         (p=0.34) is carried by the rail % and the 12→96 cell count, not
-         by colour. Do not move another stop onto an unsignalled beat.
-       ★ These five values are only the DEFAULT palette. PALETTES (in the JS)
-         holds five candidate schemes and usePalette() rewrites --s1..--s4 and
-         --ground live, so everything that reads these tokens follows the
-         switcher. Edit the default here and in PALETTES[0] together. */
-    --s1:#965138; --s2:#8A4D93; --s3:#73A059; --s4:#49CCDE;
-    --ground:#0B0332;
+         #8E4093 grape  →  #A6412B clay
+         #BFA38A tan    →  #70BAC3 pacific blue
+       ★ THESE MUST STAY IN SYNC WITH THE 'twilight' ENTRY IN PALETTES. The
+         chooser is gone — LOCKED_PALETTE (in the JS) pins the page to that
+         scheme and usePalette() installs it once at boot. These CSS values are
+         what paints the FIRST FRAME, before any JS has run, so if they drift
+         from the locked scheme the page flashes the old colours on load. That
+         flash is the whole reason they are duplicated here at all. */
+    --s1:#8E4093; --s2:#A6412B; --s3:#BFA38A; --s4:#70BAC3;
+    --ground:#1F1953;
     /* live accent — JS drives this from stopAt(p) every frame */
-    --accent:#965138;
+    --accent:#8E4093;
     /* ---- GAME chrome tokens ----------------------------------------------
        The rally world still runs on its own desert palette (see PAL), and
        its HUD and screens were designed against it. These are deliberately
@@ -138,11 +136,11 @@
      height IS the content. */
   .chapter.runway{min-height:var(--h,90vh);padding:0;}
   .chapter[data-align="left"]{justify-content:flex-start;align-items:center;}
-  /* ★ The extra right pad clears #paletteDock, which is fixed to the right
-     edge (~150px incl. its gutter). Without it a right-aligned display line
-     runs underneath the swatch buttons for the whole time its section is
-     entering the viewport — the copy is still legible, so it reads as a
-     layout bug rather than as an overlap you meant. */
+  /* ★ The extra right pad originally cleared #paletteDock (~150px incl. its
+     gutter). That dock is gone, but the pad is KEPT ON PURPOSE: it is now the
+     reading measure for the right-aligned display line, and the charge rail
+     still owns that edge. Dropping it would let the copy run to the viewport
+     edge and re-flow this section — a composition change, not a cleanup. */
   .chapter[data-align="right"]{justify-content:flex-end;align-items:center;
     text-align:right;padding-right:clamp(24px,12vw,190px);}
   .chapter[data-align="center"]{justify-content:center;align-items:center;text-align:center;}
@@ -244,9 +242,8 @@
   /* ---- credits dock: persistent bottom-left trigger ----------------------
      CC BY 4.0 requires visible attribution, but burying it in the finale meant
      it only existed at the very end of the page. It now lives in the one
-     corner with no fixed chrome (rail = right, palette = bottom-right,
-     toggles = top-right), reveal-on-demand: hover on desktop, tap on mobile.
-     Fixed-position / opacity-fade conventions pattern-matched off #paletteDock. */
+     corner with no fixed chrome (rail = right, toggles = top-right),
+     reveal-on-demand: hover on desktop, tap on mobile. */
   #creditsDock{position:fixed;left:24px;bottom:24px;z-index:25;
     transition:opacity .4s ease;}
   #creditsBtn{padding:5px 10px;border:1px solid var(--hair);border-radius:999px;
@@ -334,65 +331,12 @@
      so restoring light mode now means adding light variants to PALETTES. */
   #themeToggle{display:none;}
 
-  /* ---- palette dock: five candidate schemes, switchable at any scroll pos --
-     A chooser, not permanent chrome — it exists so the palette decision can be
-     made against the real page instead of against swatches. Each button is the
-     scheme itself: ground square + its four stops in luminance order, so the
-     control shows what it does.
-
-     Bottom-RIGHT, under the charge rail. The rail is vertically centred and at
-     most 46vh tall, so its lower end clears the dock; both are right:24-26px so
-     they read as one column of page controls rather than two stray widgets.
-     Contents are right-aligned (align-items:flex-end) so the pills hang off
-     that shared edge no matter how long the scheme names get. */
-  #paletteDock{position:fixed;right:24px;bottom:24px;z-index:26;
-    display:flex;flex-direction:column;align-items:flex-end;gap:8px;
-    transition:opacity .4s ease;}
-  #paletteDock .plabel{font-family:var(--font-mono);font-size:9px;
-    letter-spacing:.18em;text-transform:uppercase;color:var(--fg-soft);
-    margin-bottom:2px;transition:color .5s;text-align:right;}
-  #paletteDock .pals{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-  #paletteDock button{display:flex;align-items:center;gap:8px;
-    padding:5px 9px 5px 6px;border:1px solid var(--hair);border-radius:999px;
-    background:transparent;cursor:pointer;color:var(--fg-soft);
-    font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
-    text-transform:uppercase;
-    transition:border-color .25s,color .25s,background .25s;}
-  #paletteDock button:hover{border-color:var(--fg);color:var(--fg);}
-  #paletteDock button[aria-pressed="true"]{border-color:var(--fg);color:var(--fg);
-    background:rgba(255,255,255,.06);}
-  #paletteDock .sw{display:flex;border-radius:999px;overflow:hidden;
-    box-shadow:0 0 0 1px rgba(255,255,255,.14);}
-  #paletteDock .sw i{display:block;width:9px;height:14px;}
-  #paletteDock .nm{min-width:62px;text-align:left;}
-  /* --- battery X position: a design tuning control, left edge --------------
-     Same mono/hairline treatment as the palette dock. Temporary: it exists to
-     find the right X offset, after which the value is baked in and this goes. */
-  #batteryDock{position:fixed;left:24px;top:50%;transform:translateY(-50%);
-    z-index:26;display:flex;flex-direction:column;align-items:flex-start;gap:8px;
-    transition:opacity .4s ease;}
-  #batteryDock .plabel{font-family:var(--font-mono);font-size:9px;
-    letter-spacing:.18em;text-transform:uppercase;color:var(--fg-soft);
-    transition:color .5s;}
-  #batteryDock .val{font-family:var(--font-mono);font-size:10px;
-    color:var(--fg);font-variant-numeric:tabular-nums;}
-  #batteryDock input[type=range]{-webkit-appearance:none;appearance:none;
-    width:150px;height:4px;border-radius:999px;background:var(--hair);
-    cursor:pointer;outline:none;}
-  #batteryDock input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
-    appearance:none;width:14px;height:14px;border-radius:50%;background:var(--fg);
-    cursor:pointer;}
-  #batteryDock input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;
-    border-radius:50%;background:var(--fg);cursor:pointer;}
-  @media (max-width:720px){ #batteryDock{left:14px;} }
-  /* the dock is a design tool, not part of the story — hide it in the game */
+  /* The palette dock (#paletteDock) and the battery tuning dock (#batteryDock)
+     were both design tools, and both are gone: the palette is locked to Twilight
+     and the battery offsets are baked into BATTERY_X / BATTERY_Y. Their rules
+     lived here; the right:24px column is now the charge rail alone. */
   @media (max-width:720px){
-    /* ★ the rail relocates to a full-width strip at bottom:16px on narrow
-       screens, so the dock has to climb ABOVE it rather than sit beside it.
-       Names drop; the swatches alone still identify each scheme. */
-    #paletteDock{right:14px;bottom:62px;}
-    #paletteDock .nm{display:none;}
-    /* same climb as the dock: the rail owns the bottom:16px strip edge-to-edge,
+    /* same climb as the rail: the rail owns the bottom:16px strip edge-to-edge,
        so the credits trigger has to clear it rather than sit beside it */
     #creditsDock{left:14px;bottom:62px;}
   }
@@ -427,8 +371,7 @@
   /* ---- hide all story chrome once the race is live ---- */
   body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
   body.playing #heroTitle,body.playing #grain,body.playing #themeToggle,
-  body.playing #paletteDock,body.playing #creditsDock,
-  body.playing #batteryDock{display:none;}
+  body.playing #creditsDock{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -699,21 +642,10 @@
 <!-- light / dark theme toggle -->
 <button id="themeToggle" aria-label="Toggle dark mode" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></g><path class="moon" d="M20 13.6A8 8 0 0 1 10.4 4a8.2 8.2 0 1 0 9.6 9.6z"/></svg></button>
 
-<!-- palette chooser — buttons are built from PALETTES so the swatches can
-     never drift from the colours actually applied -->
-<div id="paletteDock" role="group" aria-label="Colour palette">
-  <div class="plabel">Palette</div>
-  <div class="pals" id="palList"></div>
-</div>
-
-<!-- battery X position: a design tuning control (temporary). Once a value is
-     chosen it is baked into BATTERY_X and this block is removed. -->
-<div id="batteryDock">
-  <div class="plabel">Battery X</div>
-  <input id="batteryX" type="range" min="-2" max="2" step="0.02" value="0"
-         aria-label="Battery X position">
-  <div class="val" id="batteryXVal">0.00</div>
-</div>
+<!-- The palette chooser (#paletteDock) and the battery X/Y tuning sliders
+     (#batteryDock) both lived here. The palette is locked to Twilight and the
+     battery offsets are baked into BATTERY_X / BATTERY_Y, so both docks and all
+     of their CSS, wiring and localStorage keys have been removed. -->
 
 <!-- credits: bottom-left, reveal on hover (desktop) / tap (mobile).
      The Sketchfab URLs are dropped from the visible text but survive as the
@@ -1834,8 +1766,14 @@ const PALETTES = [
     long:[false, false, false] },
 ];
 
-let PALETTE = PALETTES[0];
-let GROUND = PALETTE.ground;                     // Dark Amethyst — the world
+/* ★ Seeded to the LOCKED scheme, by id, for the same reason the CSS tokens are:
+   every module-level constant derived from these (STOP_COL, STOP_LCH, the baked
+   livery, the scene backgrounds) is built BEFORE usePalette() runs at boot, so
+   seeding the wrong scheme here means one scheme's geometry is baked and then
+   repainted with another's. Resolved by id so it cannot drift if PALETTES is
+   reordered — same lookup LOCKED_PALETTE uses. */
+let PALETTE = PALETTES.find(p => p.id === 'twilight') || PALETTES[0];
+let GROUND = PALETTE.ground;                     // Deep Twilight — the world
 let STOP_HEX = PALETTE.stops.slice();
 /* Scroll positions. 0.34 and 0.72 are the brand gradient's own stop spacing,
    read off the shading object in Brand Breakdown Doc_1.pdf
@@ -2837,7 +2775,22 @@ const Hero = (() => {
   const envGroup = new THREE.Group(); envGroup.visible = false; hScene.add(envGroup);
   const hGround = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
     new THREE.MeshBasicMaterial({ color:0x150A3E, transparent:true, opacity:0 }));
-  hGround.rotation.x = -Math.PI/2; hGround.position.y = -0.02; envGroup.add(hGround);
+  hGround.rotation.x = -Math.PI/2; hGround.position.y = -0.02;
+  /* ★ EXPLICIT renderOrder, AND IT IS LOAD-BEARING. Everything in envGroup is
+     transparent:true, so with all of them left on the default 0 three.js fell
+     back to sorting them by distance — and hGround is a 400x400 plane CENTRED
+     ON THE ORIGIN, 26 units behind the car it is meant to sit under. Its sort
+     key therefore depends on which side of z=0 the camera is on, and the
+     finale crosses exactly that line: the rig sits at z≈+5 at p=0.95 (ground
+     centre BEHIND the camera, ground drawn first, beam on top — correct) and
+     the match-cut literal parks it at z=-4 at p>=0.99 (ground centre now in
+     FRONT, ground sorts nearer, ground drawn LAST). Since the beam is
+     depthWrite:false it writes no depth to protect itself, so the ground
+     painted straight over it and the road glow vanished for the last hundredth
+     of the page. The band is now pinned: ground 0 → beam 1 → start line 2 →
+     lettering 3+. Do not return any of these to the default. */
+  hGround.renderOrder = 0;
+  envGroup.add(hGround);
   /* start line: alternating dark/light blocks running across the track ahead.
      ★ Spans CFG.roadHalf*2 (28 units), matching the game's road. It used to be
        10.8 units — narrower than the road it represents, and narrower than the
@@ -2856,6 +2809,7 @@ const Hero = (() => {
         transparent:true, opacity:0 }));
     blk.rotation.x = -Math.PI/2;
     blk.position.set((i - (SL_N - 1) / 2) * SL_W, 0, 0);
+    blk.renderOrder = 2;                 // above the beam, below the lettering
     startLine.add(blk);
   }
   envGroup.add(startLine);
@@ -2954,63 +2908,45 @@ const Hero = (() => {
        option since they'd fight — so sit just above it. depthWrite:false keeps
        the four planes from occluding each other where they overlap in depth. */
     m.position.set(0, 0.03, L.z);
-    m.renderOrder = 2 + i;
+    m.renderOrder = 3 + i;               // top of the band — see hGround.renderOrder
     envGroup.add(m);
     roadTextMats.push(mat);
   });
 
   /* --- the road as a storytelling element (item 13) ------------------------
-     The tarmac in front of the car stops being a flat dark plane and becomes
-     the thing that carries the eye down to the statement: glowing longitudinal
-     streaks that (in perspective, from this low camera) converge on the
-     horizon, plus a soft light beam that brightens the road under the text.
-     Both are ADDITIVE and tinted from the live stop, so they read as light on
-     the road and follow a palette switch — the same treatment the energy grid
-     uses, for the same reason (the ground is near-black, so additive = glow).
-
-     ★ ONE DRAW CALL for the streaks: a single InstancedMesh of long thin
-       planes, brightness per instance on instanceColor (edges brightest). */
-  const LANE_X = [0, -4.6, 4.6, -9.2, 9.2, -CFG.roadHalf + 0.4, CFG.roadHalf - 0.4];
-  const LANE_B = [0.46, 0.38, 0.38, 0.38, 0.38, 0.82, 0.82];  // per-lane brightness
-  const LANE_LEN = 54, LANE_Z0 = DRIVE_DIST - 6;              // from just behind the car…
-  let roadLanes = null, roadLaneMat = null;
-  {
-    const geo = new THREE.PlaneGeometry(1, LANE_LEN);
-    geo.rotateX(-Math.PI / 2);                                 // flat, running along +Z
-    roadLaneMat = new THREE.MeshBasicMaterial({ transparent:true, depthWrite:false,
-      blending:THREE.AdditiveBlending, color:0xffffff, opacity:1 });
-    roadLanes = new THREE.InstancedMesh(geo, roadLaneMat, LANE_X.length);
-    roadLanes.frustumCulled = false; roadLanes.renderOrder = 1;
-    roadLanes.instanceColor = new THREE.InstancedBufferAttribute(
-      new Float32Array(LANE_X.length * 3), 3);
-    const mm = new THREE.Matrix4(), qq = new THREE.Quaternion();
-    const pp = new THREE.Vector3(), ss = new THREE.Vector3();
-    LANE_X.forEach((x, i) => {
-      const isEdge = i >= 5;
-      pp.set(x, 0.018, LANE_Z0 + LANE_LEN / 2);
-      ss.set(isEdge ? 0.28 : 0.14, 1, 1);                     // edge lines a touch wider
-      mm.compose(pp, qq, ss);
-      roadLanes.setMatrixAt(i, mm);
-      const bg = LANE_B[i];
-      roadLanes.instanceColor.array[i*3] = roadLanes.instanceColor.array[i*3+1] =
-        roadLanes.instanceColor.array[i*3+2] = bg;
-    });
-    roadLanes.instanceMatrix.needsUpdate = true;
-    envGroup.add(roadLanes);
-  }
-  /* The light beam: a wide plane textured with a gradient that is dark at the
-     car end and brightens into a band under the lettering, so the road visibly
-     "leads" to the words. Additive + tinted like the streaks. */
+     The tarmac in front of the car carries the eye down to the statement via
+     a soft light beam that brightens the road under the text. It is ADDITIVE
+     and tinted from the live stop, so it reads as light on the road and
+     follows a palette switch — the same treatment the energy grid uses, for
+     the same reason (the ground is near-black, so additive = glow). */
+  /* ★ THE PLANE HAS TO OUTRUN THE FINALE'S FRAME AT BOTH ENDS.
+       The match cut parks the camera at (0, camHeight, DRIVE_DIST - camBack) =
+       (0, 14, -4) aimed at (0, 2, DRIVE_DIST + 8), which puts the bottom of the
+       frame on the ground at z≈15 and the top at the horizon. The plane used to
+       start at DRIVE_DIST - 6 = 20 — five units INSIDE that frame — so its near
+       edge was a visible hard line and everything below it was unlit road.
+       It now starts behind the camera (z = -6) and still ends at the old far
+       edge (z = 74), so the glow runs off the bottom of the frame instead of
+       stopping in it. Keep LANE_Z0 + LANE_LEN == 74 if you retune either. */
+  const LANE_LEN = 80, LANE_Z0 = DRIVE_DIST - 32;             // z -6 → 74
+  /* The light beam: a wide plane textured with a gradient that ramps up off its
+     near edge and then HOLDS at full brightness, so the road reads as lit from
+     the car all the way out to the horizon. Additive + tinted from the stop.
+     ★ FULL BRIGHTNESS BY z≈14.8, WHICH IS THE POINT. The finale's frame bottom
+       sits at z≈15 at p=1.00 and z≈18 at p=0.93, so the ramp is entirely below
+       the visible road across that whole span — every pixel of road the viewer
+       can see in the last 7 % of the page is on the flat 0.42 shelf, not on the
+       ramp. That is what makes the glow read as CONSTANT from 93 % to 100 %
+       rather than sliding through its own gradient as the camera lifts. The
+       soft start still exists; it is just spent off-screen. */
   let roadBeamMat = null;
   {
     const bc = document.createElement('canvas'); bc.width = 16; bc.height = 256;
     const bx = bc.getContext('2d');
-    const g = bx.createLinearGradient(0, 256, 0, 0);          // v=0 (near car) → v=1 (far)
-    g.addColorStop(0.00, 'rgba(0,0,0,0)');
-    g.addColorStop(0.45, 'rgba(255,255,255,0.10)');
-    g.addColorStop(0.72, 'rgba(255,255,255,0.42)');           // bright under the text
-    g.addColorStop(0.90, 'rgba(255,255,255,0.12)');
-    g.addColorStop(1.00, 'rgba(0,0,0,0)');
+    const g = bx.createLinearGradient(0, 256, 0, 0);          // v=0 (near edge) → v=1 (far)
+    g.addColorStop(0.00, 'rgba(0,0,0,0)');                    // z=-6, at the finale camera
+    g.addColorStop(0.26, 'rgba(255,255,255,0.42)');           // z≈14.8, just below frame bottom
+    g.addColorStop(1.00, 'rgba(255,255,255,0.42)');           // held flat to the far edge
     bx.fillStyle = g; bx.fillRect(0, 0, 16, 256);
     const tex = new THREE.CanvasTexture(bc);
     roadBeamMat = new THREE.MeshBasicMaterial({ map:tex, transparent:true,
@@ -3018,7 +2954,7 @@ const Hero = (() => {
     const beam = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W * 0.92, LANE_LEN), roadBeamMat);
     beam.rotation.set(-Math.PI / 2, 0, 0);
     beam.position.set(0, 0.014, LANE_Z0 + LANE_LEN / 2);
-    beam.renderOrder = 0; beam.frustumCulled = false;
+    beam.renderOrder = 1; beam.frustumCulled = false;   // above hGround — see its note
     envGroup.add(beam);
   }
   const _roadCol = new THREE.Color();
@@ -3029,8 +2965,15 @@ const Hero = (() => {
     const q = clamp01((carZ - 16) / 9);       // a bit earlier/wider than the text
     const t = smoothstep(q);
     stopAt(pv, _roadCol);
-    if (roadLaneMat) { roadLaneMat.color.copy(_roadCol); roadLaneMat.opacity = t; roadLanes.visible = t > 0.002; }
-    if (roadBeamMat) { roadBeamMat.color.copy(_roadCol); roadBeamMat.opacity = t * 0.9; }
+    /* ★ FULLY OPAQUE ONCE IT ARRIVES, AND IT NEVER GIVES THAT BACK. The 0.9
+       factor that used to sit here capped the glow at 10 % transparency even at
+       full reveal. t is monotonic in carZ (which is monotonic in p across both
+       drive tracks, and pinned to DRIVE_DIST past DRIVE_BY), so writing t
+       straight through means the beam ramps up to 0 % transparency and holds
+       there for the rest of the page — it can only ever get more opaque, never
+       less. Kept as a pure function of p so reverse scrubbing still reproduces
+       exactly; no latch needed, the curve does it. */
+    if (roadBeamMat) { roadBeamMat.color.copy(_roadCol); roadBeamMat.opacity = t; }
   }
 
   /* ★ GROUND AND START LINE FADE UP SEPARATELY. They used to share one
@@ -3176,7 +3119,6 @@ const Hero = (() => {
     xray:0, scanY:-0.5,                    // hologram shell + assembly scan band
     linkGlow:0,                            // the energy grid between cells
     facility:0, ridge:1,                   // backdrop: dawn → testing-facility neon
-    smoke:0,
   };
 
   /* {key, from, to, at, dur, ease}. `at`+`dur` are in p, so they read directly
@@ -3278,9 +3220,6 @@ const Hero = (() => {
     { key:'facility', from:0, to:1, at:0.46, dur:0.14, ease:'power2.inOut' },
     { key:'ridge',    from:1, to:0, at:0.40, dur:0.14, ease:'power2.inOut' },
 
-    /* --- chrome ------------------------------------------------------------- */
-    { key:'smoke',    from:0, to:1,    at:0.748, dur:0.007, ease:'none'       },
-
   ];
 
   /* Two readers over one table. `master` is PAUSED — progress() is a
@@ -3355,28 +3294,44 @@ const Hero = (() => {
   const CELL_PITCH = 0.13;               // model is 0.12 across → a 0.01 gap
   const PACK_N = 10;                     // the pack: 10 × 10
 
-  /* --- battery X offset: a design tuning control -------------------------
-     Slides the whole cell object (and its bus bars) along X during the build,
-     so the arrival/multiplication framing can be centred by eye. Because the
+  /* --- battery framing offset: LOCKED IN, was a tuning control -------------
+     Slides the whole cell object (and its bus bars) during the build, so the
+     arrival/multiplication framing sits where it was composed. Because the
      tumble rotates the InstancedMesh about its OWN origin, translating the
      object moves the centre of rotation with it and the cell keeps spinning
      about the new point — which is the whole ask.
 
-     ★ IT MUST RETURN TO 0 BEFORE THE PACK MERGES. applyPack() seats the grid
-       into the car's belly at a spot derived from CAR.box; an X offset still
-       applied there would seat the pack off-centre and drive it out through a
-       sidepod. batteryOffsetX() ramps to exactly 0 by p=0.55, before
-       PACK_MERGE_FROM (0.600), so the merge is unaffected.
-     ★ TEMPORARY. This is a tuning slider (#batteryDock); once a value is
-       chosen, inline it as the BATTERY_X default and delete the control. */
-  let BATTERY_X = (() => {
-    const v = parseFloat(localStorage.getItem('kasiBatteryX'));
-    return Number.isFinite(v) ? v : 0;
-  })();
-  function batteryOffsetX(pv){
-    // held through the build, ramped out over 0.40→0.55
-    return BATTERY_X * (1 - smoothstep(clamp01((pv - 0.40) / 0.15)));
-  }
+     ★ THESE ARE THE CHOSEN VALUES, BAKED. They came off the #batteryDock
+       sliders, which have since been deleted along with their localStorage
+       keys (kasiBatteryX / kasiBatteryY) and the Hero setter/getter pairs.
+       Edit the two numbers here to re-frame; there is no longer any runtime
+       path that can change them.
+
+     ★ THEY ARE WORLD-SPACE UNITS, WHICH IS WHY THE FRAMING IS ALREADY
+       RESOLUTION-INDEPENDENT ACROSS DESKTOP. The offset is applied to the pack
+       in the scene, not to a screen position, and the hero camera holds a FIXED
+       38° VERTICAL fov on desktop (heroViewport() only widens to 54° below the
+       720px portrait breakpoint). Vertical framing is therefore identical at
+       every desktop height, and the pack keeps exactly this spacing relative to
+       the car and the camera at every desktop width — only how much extra world
+       is visible left and right changes with the aspect ratio, which is what
+       you want a widescreen window to do. Do NOT "fix" this with a px- or
+       vw-derived term: that would make the offset drift with window size, which
+       is precisely the thing being avoided here.
+
+     ★ BOTH AXES MUST RETURN TO 0 BEFORE THE PACK MERGES. applyPack() seats the
+       grid into the car's belly at a spot derived from CAR.box; an X offset
+       still applied there would seat the pack off-centre and drive it out
+       through a sidepod, and a Y offset would sink it through the floor or
+       float it above the bodywork. One shared ramp reaches exactly 0 by p=0.55,
+       before PACK_MERGE_FROM (0.600), so the merge is unaffected. Retune the
+       window and it moves for both axes by construction. */
+  const BATTERY_X = -0.08;
+  const BATTERY_Y = -0.06;
+  // held through the build, ramped out over 0.40→0.55 — one curve, both axes
+  const batteryRamp = (pv) => 1 - smoothstep(clamp01((pv - 0.40) / 0.15));
+  function batteryOffsetX(pv){ return BATTERY_X * batteryRamp(pv); }
+  function batteryOffsetY(pv){ return BATTERY_Y * batteryRamp(pv); }
 
   /* ★ AN EVEN GRID HAS NO CENTRE CELL, so one is nominated. CELL0 is the cell
        the page opens on — the single object in scene 1 — and the camera's
@@ -4130,26 +4085,6 @@ const Hero = (() => {
      ===================================================================== */
   const DRIVE_BY = 0.96;
 
-  /* --- tyre smoke, driven by p ---------------------------------------------
-     48 puffs in the hero scene. Two windows: the launch, where the tyres light
-     up against a standing start, and a shorter one under braking. The pool is
-     pure (see makeParticles.applyP) so it scrubs both ways and reproduces
-     exactly — which matters because this page is verified by screenshot diff.
-     ★ The rear-wheel origin is derived from CAR.box, not hardcoded, for the
-       same reason packAnchor() is: a GLB re-export moves it. Car.rearWheelPos
-       belongs to the GAME car's physics state and is not usable here. */
-  const HeroSmoke = makeParticles(hScene, 48, 'puff');
-  const SMOKE_SPEC = { windows: [[0.755, 0.800], [0.755, 0.800], [0.905, 0.945]],
-                       lifeP: 0.06, scale: 0.72 };
-  const _smokeCar = new THREE.Vector3();
-  function smokeOrigin(birthP, side, out){
-    carPose(birthP, _smokeCar);
-    const b = CAR.box;
-    const halfW = b ? (b.max.x - b.min.x) * 0.42 : 0.8;
-    const rearZ = b ? b.min.z * 0.72 : -1.4;
-    return out.set(_smokeCar.x + side * halfW, _smokeCar.y + 0.18, _smokeCar.z + rearZ);
-  }
-
   /* ★ THE LAUNCH AND THE BRAKE ARE ONE MOVEMENT, NOT TWO TWEENS.
        They are split at peak speed and their slopes are MATCHED, so velocity is
        continuous across the junction and the car reads as going hard off the
@@ -4206,16 +4141,17 @@ const Hero = (() => {
   const _packL = new THREE.Vector3();
   function applyPack(pv){
     if (!cells) return;
-    const bx = batteryOffsetX(pv);         // tuning offset, 0 by the time we merge
+    const bx = batteryOffsetX(pv);         // tuning offsets, 0 by the time we merge
+    const by = batteryOffsetY(pv);
     const m = packMergeM(pv);
     // ★ explicit reset, not just an early return — scrubbing backwards past
-    //   the merge must put the pack back at its resting X, or it stays welded
+    //   the merge must put the pack back at its resting X/Y, or it stays welded
     //   to a car that has since driven away.
-    if (m <= 0) { cells.position.set(bx, 0, 0); if (links) links.position.set(bx, 0, 0); return; }
+    if (m <= 0) { cells.position.set(bx, by, 0); if (links) links.position.set(bx, by, 0); return; }
     packAnchor(_packL).applyQuaternion(car.quaternion).add(car.position);
-    // lerp FROM the offset resting pose; bx is ~0 here (ramped out by 0.55), so
-    // the merge target is unaffected, but this stays correct if the ramp moves
-    cells.position.set(bx, 0, 0).lerp(_packL, m);
+    // lerp FROM the offset resting pose; bx/by are ~0 here (ramped out by 0.55),
+    // so the merge target is unaffected, but this stays correct if the ramp moves
+    cells.position.set(bx, by, 0).lerp(_packL, m);
     cells.quaternion.copy(_qUp).slerp(car.quaternion, m);
     // the bus bars ride with the cells they connect
     if (links) { links.position.copy(cells.position); links.quaternion.copy(cells.quaternion); }
@@ -4535,9 +4471,6 @@ const Hero = (() => {
     revealRoad(p, _flyPos.z);
     revealRoadText(p, _flyPos.z);
 
-    // tyre smoke off the launch and the brake — the one dt-free particle pool
-    HeroSmoke.applyP(p, ST.smoke, SMOKE_SPEC, smokeOrigin);
-
     // the world's light: calm dawn → the hard contrast of a test facility
     applyWorldLight(p);
 
@@ -4690,17 +4623,9 @@ const Hero = (() => {
       wheelAngle: spokeDiscs.length ? spokeDiscs[0].disc.rotation.x : null,
       spokeVis: spokeDiscs.length ? spokeDiscs[0].disc.visible : null };
   }
-  /* tuning: set the battery X offset and repaint the current frame so the
-     slider updates live. Kept on the public API so #batteryDock (and the
-     console) can drive it; it writes localStorage so a chosen value survives
-     a reload while you tune. */
-  function setBatteryX(x){
-    BATTERY_X = +x || 0;
-    try { localStorage.setItem('kasiBatteryX', String(BATTERY_X)); } catch (e) {}
-    applyState();
-  }
-  return { fadeOut, show, setStops, scrub, repaint, probe, setBatteryX,
-           getBatteryX: () => BATTERY_X };
+  /* The battery X/Y setters and getters that used to sit here are gone with the
+     #batteryDock sliders — BATTERY_X / BATTERY_Y are now baked consts. */
+  return { fadeOut, show, setStops, scrub, repaint, probe };
 })();
 
 /* =====================================================================
@@ -4786,7 +4711,7 @@ const Hero = (() => {
       stops:{ white:g, cream:g, ink:g, orange:g, blue:g, gold:g } };
   }
   let curScheme = schemeFor(PALETTE);
-  let curPal = 0;
+  // (curPal went with the chooser — it only existed to drive aria-pressed)
 
   function setThemeFg(name){                 // pick light/dark text from bg luminance
     const S = curScheme;
@@ -4798,9 +4723,14 @@ const Hero = (() => {
     root.style.setProperty('--hair', 'rgba(' + rgb + ',.2)');
   }
 
-  function usePalette(i, persist){
+  /* ★ THE PALETTE IS LOCKED TO TWILIGHT — see LOCKED_PALETTE. This function is
+     kept because it is still the ONE place that installs a scheme (it rewrites
+     the OKLCH mixer inputs, the CSS tokens, the 3D scene colours and the baked
+     livery together, and those must move as a set). It is now called exactly
+     once at boot instead of from a chooser, so the `persist` argument and the
+     aria-pressed sync went with the dock. */
+  function usePalette(i){
     const pal = PALETTES[i] || PALETTES[0];
-    curPal = PALETTES.indexOf(pal);
     PALETTE = pal;
     /* --- rewrite the mixer's inputs. STOP_COL/STOP_LCH must be rebuilt, not
        mutated in place: rampAt() copies out of STOP_COL for the bit-exact
@@ -4827,41 +4757,6 @@ const Hero = (() => {
     setThemeFg(document.body.dataset.theme || 'white');
     // repaint the frame we are standing on, so the switch is instant
     if (typeof Hero !== 'undefined' && Hero.repaint) Hero.repaint();
-
-    [...palList.children].forEach((b, n) =>
-      b.setAttribute('aria-pressed', String(n === curPal)));
-    if (persist !== false)
-      try { localStorage.setItem('kasiPalette', pal.id); } catch (e) {}
-  }
-
-  /* --- build the dock from PALETTES so swatches can never drift ---------- */
-  const palList = $('#palList');
-  PALETTES.forEach((pal, i) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('aria-pressed', 'false');
-    b.setAttribute('aria-label', 'Palette: ' + pal.name);
-    const sw = document.createElement('span'); sw.className = 'sw';
-    // ground first, then the four stops in the order the scroll walks them
-    [pal.ground, ...pal.stops].forEach(h => {
-      const i2 = document.createElement('i'); i2.style.background = h; sw.appendChild(i2);
-    });
-    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = pal.name;
-    b.append(sw, nm);
-    b.addEventListener('click', () => usePalette(i));
-    palList.appendChild(b);
-  });
-
-  /* --- battery X tuning slider (temporary; see #batteryDock / BATTERY_X) --- */
-  const batteryX = $('#batteryX'), batteryXVal = $('#batteryXVal');
-  if (batteryX && typeof Hero !== 'undefined' && Hero.getBatteryX) {
-    const cur = Hero.getBatteryX();
-    batteryX.value = cur; batteryXVal.textContent = cur.toFixed(2);
-    batteryX.addEventListener('input', () => {
-      const v = parseFloat(batteryX.value);
-      batteryXVal.textContent = v.toFixed(2);
-      Hero.setBatteryX(v);
-    });
   }
 
   /* --- section theming: swap DOM palette as each block hits mid-screen --- */
@@ -4876,11 +4771,14 @@ const Hero = (() => {
   document.querySelectorAll('#story [data-theme]')
     .forEach(el => themeIO.observe(el));
 
-  // paint the saved choice (or the default) now
-  let saved = 0;
-  try { const id = localStorage.getItem('kasiPalette');
-    const n = PALETTES.findIndex(p => p.id === id); if (n >= 0) saved = n; } catch (e) {}
-  usePalette(saved, false);
+  /* ★ LOCKED TO TWILIGHT. The chooser is gone and so is the kasiPalette
+     localStorage key, so this is the only thing that selects a scheme. Resolved
+     BY ID, not by index, so reordering or trimming PALETTES cannot silently
+     ship a different palette; if the id ever goes missing the || falls back to
+     the first entry rather than throwing. To change the page's colours, change
+     the id here. */
+  const LOCKED_PALETTE = 'twilight';
+  usePalette(Math.max(0, PALETTES.findIndex(p => p.id === LOCKED_PALETTE)));
 
   /* --- charge-rail chapter ticks --- */
   const ticks = $('#railTicks');

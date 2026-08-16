@@ -8,6 +8,39 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* ============ DISPLAY FACE: GOOD TIMES ============
+     The headline face, self-hosted from Assets/. Everything that reads as a
+     headline resolves through --font-display below, so this @font-face plus
+     that one variable IS the whole swap.
+
+     ★ font-weight:100 900 ON A SINGLE STATIC FACE, AND IT IS NOT A TYPO. Good
+       Times ships one weight (OS/2 weightClass 400) but the display rules ask
+       for 800 and 900. Declared as `400` this face would not match those
+       requests, so the browser would take the one weight it has and SYNTHESISE
+       a bold — smearing the glyphs sideways, which on a wide geometric techno
+       face reads as a rendering fault rather than as bold. Claiming the full
+       range instead makes this face the exact match at every weight, so 800 and
+       900 render as the drawn artwork and no synthesis happens. The existing
+       font-weight declarations are therefore left alone.
+     ★ The URL is percent-encoded because the file name has spaces in it, and
+       `Assets` is capitalised because the folder is — case matters the moment
+       this is served from anything other than Windows.
+     ★ swap, matching the Google faces above: the headline shows in the fallback
+       and re-renders, rather than the page opening on invisible copy.
+     ★ NOTE — this loads over HTTP. Opened straight off disk (file://) Chrome
+       blocks the font fetch as a cross-origin request and the headlines fall
+       back to Unbounded; everything else on the page still works. The 3D models
+       are inlined as data-URIs precisely to dodge that, and this font could be
+       too (it is only 23 KB) if opening index.html from the filesystem needs to
+       keep the real face. */
+  @font-face{
+    font-family:'Good Times';
+    src:url('Assets/good_times/Good%20Times%20Rg.otf') format('opentype');
+    font-weight:100 900;
+    font-style:normal;
+    font-display:swap;
+  }
+
   /* ============ GLOBAL / RESET ============ */
   :root{
     /* ---- FOUR STOPS: the TWILIGHT palette, and it is the shipped one -------
@@ -35,7 +68,13 @@
     --cream:#F3E9CF; --ink:#3A2E22; --orange:#E8542F;
     --yellow:#F2C43D; --blue:#4E9FCE; --sand:#C9BE7E;
     --green:#6FBF73; --paper:#F3E9CF;
-    --font-display:'Unbounded','Arial Black',sans-serif;
+    /* Unbounded stays in the stack as the FALLBACK, not as a leftover: it is
+       what paints the headlines for the moment font-display:swap is showing
+       fallback text, and what the page falls back to if the Assets/ font
+       cannot be fetched (see the @font-face note). Both faces are wide
+       geometric sans, so the swap does not reflow the page into a different
+       shape while it happens. */
+    --font-display:'Good Times','Unbounded','Arial Black',sans-serif;
     --font-body:'Archivo','Helvetica Neue',Arial,sans-serif;
     --font-mono:'IBM Plex Mono','Courier New',monospace;
     /* live theme tokens — JS sets these per active section (setThemeFg) */
@@ -222,6 +261,15 @@
     color:var(--fg-soft);letter-spacing:2px;margin-top:38px;}
   /* the KASI wordmark as section 01's title (hero logo docks onto this slot) */
   .kasi-mark{width:min(100%,460px);height:auto;display:block;}
+  /* ---- the STACKED wordmark: mobile's dock target -------------------------
+     Desktop docks the mark INTO the headline (.kasi-inline, sized in em so it
+     tracks the cap height). Mobile docks it ABOVE the phonetic line instead, as
+     a mark in its own right — so it is sized in its own terms, not the type's.
+     Hidden by default; the mobile block below turns it on. */
+  .kasi-stack{display:none;width:min(190px,52vw);height:auto;
+    margin:0 0 22px;}
+  /* the mobile-only claim, positioned in the CSS block for the breakpoint */
+  #s1Claim{display:none;}
 
   /* ---- scroll reveal ---- */
   .rv{opacity:0;transform:translateY(38px);
@@ -264,15 +312,70 @@
   /* desktop reveal is pure CSS — same pointer-driven pattern as #railTicks */
   #creditsDock:hover #creditsPanel,#creditsDock.open #creditsPanel{
     opacity:1;visibility:visible;}
+  /* ★ .stowed IS SET AT EVERY VIEWPORT BUT ONLY STYLED AT ONE. applyScrollChrome()
+       is a single shared code path, so the class lands on desktop too — and the
+       rules that give it meaning live in the mobile block further down. On
+       desktop the credits stay put, which is the existing behaviour and the
+       intended one: a pointer has hover, a wide frame has room, and the corner
+       is not competing with anything. Do not promote those rules out of the
+       media query "for consistency"; the asymmetry is the requirement. */
 
   /* ---- brand wordmark on the arrival screen (inside #landing) ----
      KASI reads as a page title anchored near the top; the tagline is a
      bottom-left accent so neither overlaps the live car in the frame */
+  /* ★ THE MARK'S REST GEOMETRY LIVES IN THESE TWO CUSTOM PROPERTIES, and both
+       the image and the gleam read them. The gleam is a separate element that
+       has to sit exactly on top of the image — a masked highlight one pixel out
+       of register stops looking like a specular and starts looking like a
+       misprint — and the two boxes are set at two different breakpoints. Naming
+       the geometry once is what makes drift impossible; when the mobile block
+       narrows the mark, the sheen narrows with it for free. */
   #heroTitle{position:absolute;inset:0;z-index:1;pointer-events:none;
-    transition:opacity .4s ease;}
-  #heroTitle .kasi{position:absolute;left:50%;top:clamp(20px,6vh,56px);
-    transform:translateX(-50%);width:clamp(220px,34vw,540px);height:auto;
+    transition:opacity .4s ease;
+    --mark-w:clamp(220px,34vw,540px);--mark-top:clamp(20px,6vh,56px);}
+  #heroTitle .kasi{position:absolute;left:50%;top:var(--mark-top);
+    transform:translateX(-50%);width:var(--mark-w);height:auto;
     display:block;pointer-events:none;}
+
+  /* ---- the cinematic gleam over the wordmark (mobile) ---------------------
+     A specular sweep that travels across the K, A, S and I and is CLIPPED TO
+     THE LETTERFORMS: the layer is masked by the logo PNG's own alpha (the
+     --kasi-mask custom property is set from KASI_LOGO_SRC at boot), so the
+     highlight only ever exists inside the glyphs — it never paints a band
+     across the background, which is what separates a premium sheen from a
+     rotating-banner shine.
+
+     ★ IT MIRRORS .kasi's REST GEOMETRY, NOT ITS LIVE ONE, and that is why it
+       only runs while the mark IS at rest. dockHeroLogo() rewrites .kasi's
+       transform every frame of the flight; tracking that here would mean a
+       second per-frame style write on the one animation the whole page is
+       judged by. Instead applyScrollChrome() drops #heroTitle.lit the moment
+       the scroll leaves the top, so the gleam is a LANDING-STATE flourish and
+       the flight is left alone. Scroll back up and it returns.
+     ★ aspect-ratio is LOGO_ASPECT (1500/428) restated. The mask has to sit on
+       a box the same shape as the image or the sweep shears across the glyphs.
+     ★ The sweep is ~1.1 s of a 6 s cycle, so the mark is unlit ~82% of the
+       time. That ratio IS the "subtle" — a wider band or a shorter period
+       reads as a loading shimmer. */
+  #kasiGleam{position:absolute;left:50%;top:var(--mark-top);
+    transform:translateX(-50%);width:var(--mark-w);
+    aspect-ratio:1500/428;display:none;pointer-events:none;
+    -webkit-mask-image:var(--kasi-mask);mask-image:var(--kasi-mask);
+    -webkit-mask-size:100% 100%;mask-size:100% 100%;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    background-image:linear-gradient(102deg,
+      rgba(255,255,255,0) 41%, rgba(255,255,255,.28) 47%,
+      rgba(255,255,255,.9) 50%, rgba(255,255,255,.28) 53%,
+      rgba(255,255,255,0) 59%);
+    background-repeat:no-repeat;background-size:260% 100%;
+    mix-blend-mode:screen;opacity:0;}
+  @keyframes kasiGleam{
+    0%   {background-position:135% 0;opacity:0;}
+    3%   {opacity:1;}
+    15%  {background-position:-45% 0;opacity:1;}
+    19%  {background-position:-45% 0;opacity:0;}
+    100% {background-position:-45% 0;opacity:0;}
+  }
 
   /* ---- charge rail: vertical battery progress (from #battBar DNA) ---- */
   #chargeRail{--railLen:min(46vh,380px);
@@ -331,14 +434,78 @@
      so restoring light mode now means adding light variants to PALETTES. */
   #themeToggle{display:none;}
 
-  /* The palette dock (#paletteDock) and the battery tuning dock (#batteryDock)
-     were both design tools, and both are gone: the palette is locked to Twilight
-     and the battery offsets are baked into BATTERY_X / BATTERY_Y. Their rules
-     lived here; the right:24px column is now the charge rail alone. */
+  /* The palette dock (#paletteDock) is gone for good — the palette is locked to
+     Twilight. The battery tuning dock is back as a MOBILE-ONLY control; see
+     below. Desktop's right:24px column is still the charge rail alone.
+
+     ---- #batteryDock: designer control for the mobile battery anchor ---------
+     Collapsed to a single pill by default so it never sits over the story it is
+     used to judge; tapping it opens the two sliders. It is display:none above
+     720px — desktop framing is baked and has no runtime path — and it hides
+     entirely once the race starts, along with the rest of the story chrome.
+     ★ Top-LEFT. Every other fixed element is spoken for: the charge rail owns
+       the bottom strip in portrait, the credits trigger sits at bottom-left
+       above it, and sound/theme are top-right. */
+  #batteryDock{display:none;}
+  #batteryDock button{font-family:var(--font-mono);cursor:pointer;}
+  #batteryDockBtn{padding:6px 11px;border:1px solid var(--hair);border-radius:999px;
+    background:var(--ground);color:var(--fg-soft);font-size:9px;letter-spacing:.14em;
+    text-transform:uppercase;}
+  #batteryDockBtn[aria-expanded="true"]{color:var(--fg);border-color:var(--fg);}
+  #batteryDockBody{display:none;margin-top:8px;padding:12px;width:min(260px,72vw);
+    border:1px solid var(--hair);border-radius:10px;background:var(--ground);}
+  #batteryDock.open #batteryDockBody{display:block;}
+  #batteryDockBody label{display:block;margin-bottom:12px;}
+  #batteryDockBody .lbl{display:flex;justify-content:space-between;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--fg-soft);margin-bottom:6px;}
+  #batteryDockBody .lbl i{font-style:normal;color:var(--accent);
+    font-variant-numeric:tabular-nums;}
+  #batteryDockBody input[type=range]{width:100%;height:26px;background:transparent;
+    -webkit-appearance:none;appearance:none;touch-action:pan-y;}
+  #batteryDockBody input[type=range]::-webkit-slider-runnable-track{
+    height:3px;border-radius:2px;background:var(--hair);}
+  #batteryDockBody input[type=range]::-moz-range-track{
+    height:3px;border-radius:2px;background:var(--hair);}
+  #batteryDockBody input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+    width:20px;height:20px;margin-top:-9px;border-radius:50%;border:none;
+    background:var(--accent);}
+  #batteryDockBody input[type=range]::-moz-range-thumb{
+    width:20px;height:20px;border:none;border-radius:50%;background:var(--accent);}
+  #battReset{width:100%;padding:7px 0;border:1px solid var(--hair);border-radius:6px;
+    background:transparent;color:var(--fg-soft);font-size:9px;letter-spacing:.14em;
+    text-transform:uppercase;}
+
   @media (max-width:720px){
     /* same climb as the rail: the rail owns the bottom:16px strip edge-to-edge,
        so the credits trigger has to clear it rather than sit beside it */
     #creditsDock{left:14px;bottom:62px;}
+    /* ---- the credits are a LANDING-STATE element, on mobile only -----------
+       Attribution has to be visible, and on a phone the one frame with room
+       for it is the arrival screen — after that the bottom-left corner is
+       competing with the charge rail and the copy. So it holds the landing
+       state and clears on the first scroll.
+       ★ The exit is FAST and DIRECTIONAL: .22s, dropping and contracting
+         slightly rather than only fading, which reads as the element stepping
+         out of the frame rather than a layer being switched off. Coming back
+         (scrolling to the top again) is slower and pure opacity — arriving
+         should be softer than leaving.
+       ★ visibility, not display: display:none cannot be transitioned, so the
+         exit would be a cut. The 0s-delayed visibility step retires it from
+         hit-testing only once the fade has finished. */
+    #creditsDock{transition:opacity .5s ease .1s,transform .5s ease .1s;
+      transform:none;}
+    #creditsDock.stowed{opacity:0;transform:translateY(12px) scale(.94);
+      visibility:hidden;pointer-events:none;
+      transition:opacity .22s cubic-bezier(.4,0,1,1),
+                 transform .22s cubic-bezier(.4,0,1,1),
+                 visibility 0s linear .22s;}
+    /* the dock only exists here — it tunes the mobile pair and nothing else */
+    #batteryDock{display:block;position:fixed;left:14px;top:14px;z-index:27;}
+    /* the gleam is a portrait landing-state flourish; .lit is driven by
+       applyScrollChrome() and is only on at the very top of the page */
+    #heroTitle.lit #kasiGleam{display:block;
+      animation:kasiGleam 6s cubic-bezier(.45,0,.2,1) infinite;}
   }
 
   /* ---- grain overlay ---- */
@@ -371,7 +538,7 @@
   /* ---- hide all story chrome once the race is live ---- */
   body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
   body.playing #heroTitle,body.playing #grain,body.playing #themeToggle,
-  body.playing #creditsDock{display:none;}
+  body.playing #creditsDock,body.playing #batteryDock{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -380,13 +547,69 @@
     .tick-inner{animation:none;}
   }
   @media (max-width:720px){
+    /* ★ --h IS KEPT, and that is the fix for two separate mobile bugs.
+       This rule used to end in `min-height:85vh`, which overrode the base
+       `min-height:var(--h,85vh)` and flattened all four sections to 85vh. Two
+       consequences, both reported:
+         1. #s1 (190vh on desktop) collapsed to 85vh, so its bottom-aligned copy
+            — "[logo] is a battery company.", the /ˈka·si/ line and the
+            definition — sat INSIDE the opening viewport instead of below the
+            fold. The page is supposed to open on the cell alone.
+         2. Every p constant in the timeline is measured against the desktop
+            heights, so the whole scroll clock ran at ~44% length and each copy
+            beat landed on the wrong camera keyframe — including the wordmark's
+            flight, which had no runway left to fly across.
+       Restoring --h puts mobile on the SAME scroll clock as desktop, which is
+       what makes the logo hand-off read identically on both. */
     .chapter{padding:12vh 26px;justify-content:flex-start !important;
-      align-items:flex-end !important;text-align:left !important;min-height:85vh;}
-    /* keep --h: these gaps ARE the scroll clock, and flattening them to a
-       single 90vh on mobile would slide every copy beat off its keyframe */
+      align-items:flex-end !important;text-align:left !important;
+      min-height:var(--h,85vh);}
     .chapter.runway{min-height:var(--h,90vh);padding:0;}
+    /* the deep bottom pad is the "open on the cell" beat — same value desktop
+       uses, restated because the shorthand `padding` above resets it */
+    .chapter.lead{padding-bottom:26vh;}
     .wrap{max-width:100%;}
     .lede{font-size:16px;}
+
+    /* ---- MOBILE COPY SEQUENCE ------------------------------------------
+       Desktop reads: [KASI mark] is a battery company. / phonetic / meaning —
+       one block, the mark standing in for the word.
+       Mobile splits that into two beats, in this order:
+         1. scene 1  — the MARK, the phonetic, the meaning. The name, said and
+                       then defined, with the wordmark landing directly above
+                       the phonetic line as the thing being pronounced.
+         2. #s1Claim — "KASI is a battery company.", plain text, landing on the
+                       cell multiplication (see --claim-top).
+       So the headline that carries the inline mark is off on mobile, and the
+       stacked mark that replaces it is on. */
+    #s1Head{display:none;}
+    .kasi-stack{display:block;margin-bottom:0;}
+    /* .ipa's 38px top margin was the gap under the DESKTOP headline. Here the
+       mark sits directly above it and the two are one unit — the name written,
+       then the name pronounced — so the gap closes to a typographic one. */
+    #s1 .ipa{margin-top:18px;}
+
+    /* --- #s1Claim: the claim, timed onto the grid ------------------------
+       ★ --claim-top IS A TIMING CONSTANT WEARING A LAYOUT UNIT. It is the
+         claim's distance from the top of the document, and because p is
+         scrollY/(scrollHeight−innerHeight) it decides which frame of the cell
+         multiplication the line is centred on. The scroll span is 690vh, so
+         the line crosses mid-screen at p = (--claim-top − 50vh) / 690vh.
+         At 245vh that is p ≈ 0.283 — inside the ring build (rings open at
+         .225/.245/.275/.310/.350 and the last cell seats at .435), i.e. while
+         the grid is visibly multiplying out from the first cell. Move this
+         value to move the beat; do NOT move it by changing a section height,
+         which would re-time scenes 2, 3 and 4 along with it.
+       ★ Out of flow ON PURPOSE — it adds no height, so every other p constant
+         in the file keeps its meaning. See the markup note.
+       ★ The right pad matches .chapter's 26px gutter so the claim sits on the
+         same measure as the copy above and below it. */
+    #s1Claim{display:block;position:absolute;left:26px;right:26px;
+      top:var(--claim-top,245vh);
+      /* not a .chapter, so it inherits neither the live text colour nor the
+         ease that carries the per-section theme change */
+      color:var(--fg);transition:color .5s ease;}
+    #s1Claim .h-big{font-size:clamp(32px,4.6vw,62px);}
     #chargeRail{top:auto;bottom:16px;right:16px;left:16px;flex-direction:row-reverse;
       transform:none;gap:10px;align-items:center;}
     #railTrack{width:100%;height:6px;}
@@ -397,7 +620,20 @@
       background-image:none;background-color:var(--accent);}
     #railPct{writing-mode:horizontal-tb;transform:none;}
     #railTicks,#railLabel{display:none;}
-    #heroTitle{justify-content:flex-end;padding-bottom:16vh;}
+    /* ★ The hero wordmark is the START of the flight, so its resting pose has
+       to be a real portrait composition: near the top of the frame, centred,
+       and small enough that the shrink-to-headline still reads as a shrink.
+       (The rule that used to be here — justify-content/padding on #heroTitle —
+       was dead: #heroTitle is position:absolute;inset:0, not a flex container,
+       and .kasi is absolutely positioned inside it.)
+       Everything after this is dockHeroLogo()'s job, unchanged and shared with
+       desktop: it drives this mark onto #ch1Logo's live rect over p .015→.13,
+       so on the way down it travels centre-top → bottom-left while scaling from
+       this width to the headline's cap height, and hands over to the in-flow
+       <img> exactly when the two coincide. Down, left, smaller, merged into the
+       sentence — the desktop behaviour, on the desktop scroll clock. */
+    /* one declaration re-frames the mark AND the gleam that sits on it */
+    #heroTitle{--mark-w:clamp(190px,58vw,340px);--mark-top:clamp(18px,7vh,44px);}
   }
 
   /* ============ TILT-SHIFT FAKE (blurred top & bottom bands) ============ */
@@ -448,24 +684,54 @@
     pointer-events:auto;font-family:inherit;line-height:1;}
   #pauseBtn:hover{background:var(--orange);}
 
-  /* ============ TOUCH CONTROLS (coarse pointers only) ============ */
+  /* ============ TOUCH CONTROLS (coarse pointers only) ============
+     ONE VIRTUAL JOYSTICK, and nothing else. The four discrete pads that used to
+     live here — ◀ ▶ on the left, BRAKE + GAS on the right — are gone: they ate
+     both bottom corners, needed two thumbs, and made "accelerate while turning"
+     a two-finger stretch on a phone. The stick is a single right-thumb control
+     that resolves to the SAME boolean key-state the keyboard writes (see
+     Input), so the physics in Car.step() is untouched.
+     ★ NO GEAR / HANDBRAKE CONTROL. k.hand stays false on touch by design — the
+       stick's four directions are forward, brake/reverse, steer left, steer
+       right, and that is the whole surface at this stage. */
   #touch{position:absolute;inset:0;display:none;pointer-events:none;}
   @media (pointer: coarse){
     #touch{display:block;}
-    #speedo{bottom:160px;}
-    #driftTag{bottom:248px;}
-    #driftScore{bottom:226px;}
-    #progWrap{bottom:130px;}
-    .tGroup{bottom:calc(26px + env(safe-area-inset-bottom));}
+    /* the stick owns the bottom-right corner, so every HUD readout that used to
+       sit above the old GAS pad climbs to clear the (taller) stick instead */
+    #speedo{bottom:206px;}
+    #driftTag{bottom:296px;}
+    #driftScore{bottom:274px;}
+    #progWrap{bottom:196px;}
   }
-  .tGroup{position:absolute;bottom:26px;display:flex;gap:14px;align-items:flex-end;pointer-events:none;}
-  .tGroup.left{left:20px;}
-  .tGroup.right{right:20px;}
-  .tBtn{pointer-events:auto;width:78px;height:78px;border-radius:50%;border:none;
-    background:rgba(58,46,34,.38);color:var(--cream);font-family:inherit;font-size:15px;
-    letter-spacing:1px;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;}
-  .tBtn.gas{width:94px;height:94px;background:rgba(232,84,47,.5);}
-  .tBtn:active{background:rgba(232,84,47,.7);}
+  /* Hit area, deliberately larger than the drawn base: a thumb landing slightly
+     outside the ring should still grab the stick rather than fall through to the
+     page. touch-action:none stops the browser claiming the drag as a scroll. */
+  #stick{position:absolute;right:8px;bottom:calc(14px + env(safe-area-inset-bottom));
+    width:184px;height:184px;pointer-events:auto;touch-action:none;
+    -webkit-tap-highlight-color:transparent;user-select:none;
+    display:flex;align-items:center;justify-content:center;}
+  #stickBase{position:relative;width:148px;height:148px;border-radius:50%;
+    background:rgba(58,46,34,.22);border:2px solid rgba(58,46,34,.34);
+    transition:background .15s,border-color .15s;}
+  #stick.active #stickBase{background:rgba(58,46,34,.3);border-color:var(--orange);}
+  /* the four axis ticks: what the stick DOES, drawn once so the removed pads
+     don't take their labels with them */
+  #stickBase::before,#stickBase::after{content:"";position:absolute;
+    background:rgba(58,46,34,.26);}
+  #stickBase::before{left:50%;top:14px;bottom:14px;width:2px;margin-left:-1px;}
+  #stickBase::after{top:50%;left:14px;right:14px;height:2px;margin-top:-1px;}
+  #stickKnob{position:absolute;left:50%;top:50%;width:62px;height:62px;
+    margin:-31px 0 0 -31px;border-radius:50%;
+    background:rgba(232,84,47,.62);border:2px solid var(--cream);
+    box-shadow:0 3px 10px rgba(0,0,0,.25);
+    transition:transform .16s cubic-bezier(.2,.8,.2,1),background .15s;}
+  /* while the thumb is down the knob is driven per-frame — an easing here would
+     make it lag the finger, so it is only eased on the spring-back to centre */
+  #stick.active #stickKnob{transition:background .15s;background:rgba(232,84,47,.85);}
+  #stickLabel{position:absolute;left:0;right:0;bottom:-2px;text-align:center;
+    font-size:9px;letter-spacing:3px;color:var(--ink);opacity:.5;
+    pointer-events:none;}
 
   /* ============ SCREENS ============ */
   .screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
@@ -502,13 +768,25 @@
   #startWrap .ctaRow{display:flex;gap:14px;align-items:center;justify-content:center;
     flex-wrap:wrap;}
 
+  /* ---- the GAME's headlines, on the same display face --------------------
+     These three are the only other headline-scale type in the app: the
+     countdown numeral, PAUSED, and the results title. They inherited Arial
+     Black from <body> because the display face used to be a landing-only
+     concern; they take --font-display now so "headline" means one face
+     everywhere, story side and race side.
+     ★ Colour and text-shadow are untouched. The rally HUD and screens are
+       designed against the desert palette (PAL / --ink / --cream), which the
+       story palette deliberately does not reach into — this is a typeface
+       change, not a re-skin. */
   #countdown{display:none;background:transparent;pointer-events:none;}
-  #countNum{font-size:clamp(90px,18vw,200px);color:var(--ink);
+  #countNum{font-family:var(--font-display);font-weight:900;
+    font-size:clamp(90px,18vw,200px);color:var(--ink);
     text-shadow:6px 6px 0 var(--yellow);}
 
   #pauseScreen{display:none;background:rgba(58,46,34,.45);backdrop-filter:blur(4px);
     -webkit-backdrop-filter:blur(4px);}
-  #pauseScreen h2{font-size:clamp(40px,7vw,80px);color:var(--cream);margin-bottom:34px;
+  #pauseScreen h2{font-family:var(--font-display);font-weight:900;
+    font-size:clamp(40px,7vw,80px);color:var(--cream);margin-bottom:34px;
     text-shadow:5px 5px 0 rgba(0,0,0,.15);}
   #pauseScreen .btn{margin:8px 0;min-width:280px;}
   #pauseScreen .btn.ghost{color:var(--cream);border-color:var(--cream);}
@@ -519,7 +797,8 @@
     rgba(243,233,207,.97) 0%, rgba(243,233,207,.94) 36%, rgba(243,233,207,.4) 62%, rgba(243,233,207,0) 80%);
     align-items:flex-start;justify-content:center;text-align:left;
     padding:24px 0 24px 5vw;overflow:hidden;}
-  #results h2{font-size:clamp(26px,4.5vw,46px);margin-bottom:4px;}
+  #results h2{font-family:var(--font-display);font-weight:900;
+    font-size:clamp(26px,4.5vw,46px);margin-bottom:4px;}
   #results .kicker{margin-bottom:6px;}
   #results #newBest{margin-bottom:2px;}
   #results .stats{display:grid;grid-template-columns:repeat(2,minmax(160px,max-content));
@@ -575,8 +854,12 @@
     #results .row .btn{flex:1;padding:15px 0;font-size:14px;letter-spacing:3px;}
 
     /* final landing section: lift the intro copy up so the car + CTA row
-       aren't crowded; car framing and #startWrap stay as-is */
-    .chapter.final{min-height:85vh;align-items:flex-start !important;
+       aren't crowded; car framing and #startWrap stay as-is.
+       ★ min-height keeps --h (210vh) — see the note on .chapter above. Pinning
+         it to 85vh here shortened the scroll range, which moves EVERY p in the
+         timeline, not just this section's. Only the alignment and pads are a
+         mobile decision; the height is the clock. */
+    .chapter.final{min-height:var(--h,85vh);align-items:flex-start !important;
       padding-top:12vh;padding-bottom:0;}
 
     /* two CTAs side by side don't fit a phone — stack them, ask on top */
@@ -642,10 +925,32 @@
 <!-- light / dark theme toggle -->
 <button id="themeToggle" aria-label="Toggle dark mode" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></g><path class="moon" d="M20 13.6A8 8 0 0 1 10.4 4a8.2 8.2 0 1 0 9.6 9.6z"/></svg></button>
 
-<!-- The palette chooser (#paletteDock) and the battery X/Y tuning sliders
-     (#batteryDock) both lived here. The palette is locked to Twilight and the
-     battery offsets are baked into BATTERY_X / BATTERY_Y, so both docks and all
-     of their CSS, wiring and localStorage keys have been removed. -->
+<!-- The palette chooser (#paletteDock) lived here and is gone for good: the
+     palette is locked to Twilight.
+
+     #batteryDock is BACK, but narrower than the tool it replaces — it is now a
+     MOBILE-ONLY control, hidden above the 720px breakpoint, and it writes the
+     mobile pair only. Desktop framing stays baked in BATTERY_X / BATTERY_Y with
+     no runtime path, exactly as before. The two sliders move the anchor the
+     cell floats around during the build (see setMobileBattery); the float
+     itself is untouched, and the shared ramp still returns both axes to 0
+     before the pack merges into the car. -->
+<div id="batteryDock">
+  <button id="batteryDockBtn" type="button" aria-expanded="false"
+          aria-controls="batteryDockBody">Battery&nbsp;pos</button>
+  <div id="batteryDockBody">
+    <label><span class="lbl">X <i id="battXVal">0.000</i></span>
+      <input id="battX" type="range" min="-0.60" max="0.60" step="0.005"></label>
+    <label><span class="lbl">Y <i id="battYVal">0.000</i></span>
+      <input id="battY" type="range" min="-0.60" max="0.60" step="0.005"></label>
+    <!-- SIZE. Range is deliberately asymmetric in feel but symmetric in ratio:
+         0.4× to 2.5× either side of 1, which is as far as the framing stays a
+         framing decision rather than a different shot. -->
+    <label><span class="lbl">Size <i id="battSVal">1.00×</i></span>
+      <input id="battS" type="range" min="0.40" max="2.50" step="0.01"></label>
+    <button id="battReset" type="button">Reset</button>
+  </div>
+</div>
 
 <!-- credits: bottom-left, reveal on hover (desktop) / tap (mobile).
      The Sketchfab URLs are dropped from the visible text but survive as the
@@ -674,8 +979,14 @@
 <!-- ============ LANDING: interactive 3D KASI car ============ -->
 <section id="landing">
   <canvas id="heroCanvas"></canvas>
-  <div id="heroTitle">
+  <!-- .lit in the MARKUP, not only from JS: the page opens at scroll 0, so the
+       gleam should be running on the first painted frame. applyScrollChrome()
+       takes it off on the first scroll and puts it back if you return. -->
+  <div id="heroTitle" class="lit">
     <img class="kasi" id="kasiLogo" alt="KASI">
+    <!-- the specular sweep, clipped to the letterforms by the logo's own alpha
+         (see #kasiGleam). Purely decorative and purely mobile. -->
+    <span id="kasiGleam" aria-hidden="true"></span>
     <!-- ★ NO TAGLINE HERE ANY MORE. It read "Cells for the continent's grid.
          Tested in the most extreme conditions." — which is word-for-word scene
          1's lede, one scroll further down. Two copies of one sentence, one of
@@ -730,17 +1041,54 @@
              is precisely what measureDock() must not have. .rv-maskonly keeps
              the heading (and the logo) fully visible and untransformed; the
              .mask clips carry the text's entrance instead. -->
-      <h2 class="h-big rv rv-maskonly">
+      <h2 class="h-big rv rv-maskonly" id="s1Head">
         <span class="hl-row"><img class="kasi-inline" id="ch1Logo" alt="KASI"><span
           class="mask"><span>is a</span></span></span>
         <span class="mask"><span class="accent">battery company.</span></span></h2>
+      <!-- ===== MOBILE DOCK TARGET =====================================
+           Portrait does NOT put the wordmark inside the headline. The
+           headline above is display:none under 720px and the claim is
+           re-set as plain text further down the scroll (#s1Claim), so on
+           mobile scene 1 is the NAME, said and then defined — mark,
+           phonetic, meaning — and the claim is a later beat.
+
+           This <img> is the mobile flight target: the mark lands here,
+           directly above the phonetic line, and from then on scrolls
+           upward as part of this block. dockHeroLogo() picks between it
+           and #ch1Logo from the same media query the fov switch uses.
+           ★ NO .rv, for the same reason #ch1Logo has none: .rv parks the
+             element 38px low until its observer fires, so the mark would
+             fly to a slot that then slid out from under it. -->
+      <img class="kasi-stack" id="ch1LogoMobile" alt="KASI">
       <!-- the name, said and then defined: a supporting line under the claim,
            not a beat of its own. -->
       <div class="ipa rv" style="--i:2">/ˈka·si/</div>
-      <p class="lede def rv" style="--i:3">from <b>lokasie</b> — the location, the township,
-        the neighbourhood. The place that makes you.</p>
+      <p class="lede def rv" style="--i:3">Swahili for Speed or Velocity.
+        Moving Fast enough to matter.</p>
     </div>
   </section>
+
+  <!-- ============ MOBILE ONLY — THE CLAIM, AS ITS OWN BEAT ============
+       "KASI is a battery company." set as plain text (the wordmark is NOT
+       its first word on mobile — it belongs to the name block above).
+
+       ★ POSITION:ABSOLUTE INSIDE #story, AND THAT IS THE WHOLE POINT. It has
+         to land on the grid-multiplication beat, which is inside #s2's span —
+         but putting it in #s2's flow would push that section's own lede down
+         and re-time it, and giving it a section of its own would lengthen the
+         document and move EVERY p constant in the file. Out of flow it
+         contributes exactly zero height, so scene 2, 3 and 4 keep their copy,
+         their timing and their animations untouched.
+       ★ `top` IS MEASURED FROM #story's TOP, i.e. from page 0, and it is a
+         TIMING VALUE, not a layout one: it decides which frame of the cell
+         multiplication this line is centred on. See the note on --claim-top.
+       ★ display:none above 720px — desktop's claim is still the headline in
+         #s1 with the mark as its first word. -->
+  <div id="s1Claim">
+    <h2 class="h-big rv rv-maskonly">
+      <span class="mask"><span>KASI is a</span></span>
+      <span class="mask"><span class="accent">battery company.</span></span></h2>
+  </div>
 
   <!-- ============ SCENE 2 — THE SCALE ============
        The camera pulls back while one cell becomes a hundred, ring by ring,
@@ -812,14 +1160,14 @@
   <div id="progWrap"><div id="progFill"></div></div>
   <canvas id="minimap" width="150" height="150"></canvas>
   <button id="pauseBtn" title="Pause (Esc / P)">&#10074;&#10074;</button>
+  <!-- ONE virtual joystick replaces the old four-pad rig (◀ ▶ / BRAKE / GAS).
+       Push up to accelerate, pull down to brake and then reverse, left/right to
+       steer. Diagonals are real: the axes are read independently, so
+       "throttle + steer" is one thumb instead of two. -->
   <div id="touch">
-    <div class="tGroup left">
-      <button class="tBtn" data-key="left">&#9664;</button>
-      <button class="tBtn" data-key="right">&#9654;</button>
-    </div>
-    <div class="tGroup right">
-      <button class="tBtn" data-key="down">BRAKE</button>
-      <button class="tBtn gas" data-key="up">GAS</button>
+    <div id="stick" role="application" aria-label="Drive control joystick">
+      <div id="stickBase"><div id="stickKnob"></div></div>
+      <div id="stickLabel">DRIVE</div>
     </div>
   </div>
 </div>
@@ -962,19 +1310,96 @@ const Input = (() => {
   addEventListener('keyup', e => {
     if (map[e.code] !== undefined) { k[map[e.code]] = false; e.preventDefault(); }
   });
-  /* touch buttons write into the same key-state object */
-  for (const b of document.querySelectorAll('#touch .tBtn')) {
-    const key = b.dataset.key;
-    const off = () => { k[key] = false; };
-    b.addEventListener('pointerdown', e => {
+  /* ------------------------------------------------------------------
+     VIRTUAL JOYSTICK (mobile / coarse pointers)
+     Replaces the four discrete touch pads. It writes into the SAME boolean
+     key-state object the keyboard writes, which is the whole design: Car.step()
+     reads c.up / c.down / c.left / c.right and nothing about it changes, so
+     touch driving behaves exactly like keyboard driving.
+
+     ★ THE TWO AXES ARE THRESHOLDED INDEPENDENTLY, so a diagonal is a real
+       diagonal — throttle and steering at once, which the old rig needed two
+       thumbs for.
+     ★ THE DEADZONES DIFFER ON PURPOSE. Vertical is tighter (.20) because a
+       thumb resting forward should mean "go"; horizontal is wider (.32) because
+       a thumb pushed straight up drifts sideways by a few degrees and would
+       otherwise steer the car the whole way down a straight.
+     ★ k.hand IS NEVER SET HERE. No handbrake / gear control at this stage —
+       the stick's surface is forward, brake, left, right.
+     ------------------------------------------------------------------ */
+  (function joystick(){
+    const stick = document.getElementById('stick');
+    const knob  = document.getElementById('stickKnob');
+    const base  = document.getElementById('stickBase');
+    if (!stick || !knob || !base) return;
+
+    const DEAD_Y = 0.20, DEAD_X = 0.32;
+    // how far the knob may travel, as a fraction of the ring radius. The knob is
+    // 62px across inside a 148px ring, so 0.58 keeps it fully inside the track
+    // at full deflection instead of hanging half-way over the edge.
+    const KNOB_TRAVEL = 0.58;
+    let pid = null, cx = 0, cy = 0, radius = 60;
+
+    function release(){
+      pid = null;
+      stick.classList.remove('active');
+      knob.style.transform = '';                 // eased spring back to centre
+      k.up = k.down = k.left = k.right = false;
+    }
+    /* Drive from the BASE's live rect rather than a cached one: the HUD is a
+       fixed overlay, but the safe-area inset and an orientation change both
+       move this element, and a stale centre would bias every reading. */
+    function grab(e){
+      const r = base.getBoundingClientRect();
+      cx = r.left + r.width / 2;
+      cy = r.top + r.height / 2;
+      radius = r.width / 2;
+    }
+    function apply(e){
+      let dx = (e.clientX - cx) / radius;
+      let dy = (e.clientY - cy) / radius;
+      const mag = Math.hypot(dx, dy);
+      if (mag > 1) { dx /= mag; dy /= mag; }     // clamp the reading to the unit disc
+      /* The KNOB is drawn on a shorter leash than the reading it represents —
+         the thumb can travel the full ring, the graphic stops inside it. */
+      const t = radius * KNOB_TRAVEL;
+      knob.style.transform =
+        'translate(' + (dx * t).toFixed(1) + 'px,' + (dy * t).toFixed(1) + 'px)';
+      // screen-up is -y, and up is forward
+      k.up    = dy < -DEAD_Y;
+      k.down  = dy >  DEAD_Y;
+      k.left  = dx < -DEAD_X;
+      k.right = dx >  DEAD_X;
+    }
+    stick.addEventListener('pointerdown', e => {
       e.preventDefault();
-      b.setPointerCapture(e.pointerId);
-      k[key] = true;
+      if (pid !== null) return;                  // one thumb owns the stick
+      pid = e.pointerId;
+      /* Capture keeps the stick tracking a thumb that slides off the ring —
+         without it the first pointermove outside the element is lost and the
+         car latches at whatever the last in-bounds reading was. Guarded because
+         it throws for a pointer id the browser has no active record of. */
+      try { stick.setPointerCapture(pid); } catch (_) {}
+      stick.classList.add('active');
+      grab(e); apply(e);
     });
-    b.addEventListener('pointerup', off);
-    b.addEventListener('pointercancel', off);
-    b.addEventListener('contextmenu', e => e.preventDefault());
-  }
+    stick.addEventListener('pointermove', e => {
+      if (e.pointerId !== pid) return;
+      e.preventDefault();
+      apply(e);
+    });
+    const up = e => { if (pid === null || e.pointerId === pid) release(); };
+    stick.addEventListener('pointerup', up);
+    stick.addEventListener('pointercancel', up);
+    stick.addEventListener('lostpointercapture', up);
+    stick.addEventListener('contextmenu', e => e.preventDefault());
+    /* A pause, a finish or a tab switch must not leave the throttle latched on:
+       the stick can be torn down mid-press by any of them. */
+    addEventListener('blur', release);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+    addEventListener('game-pause', release);
+  })();
+
   return k;
 })();
 
@@ -1878,7 +2303,13 @@ function rebakeGradients(){ for (const e of GRAD_BAKES) bakeGradient(e); }
 // KASI logo (data-URI from kasi_logo.js) → hero title image + car side decals
 const KASI_LOGO_SRC = (typeof window !== 'undefined' && window.KASI_LOGO) || 'kasi_logo.png';
 { const el = document.getElementById('kasiLogo'); if (el) el.src = KASI_LOGO_SRC;
-  const c1 = document.getElementById('ch1Logo'); if (c1) c1.src = KASI_LOGO_SRC; }
+  const c1 = document.getElementById('ch1Logo'); if (c1) c1.src = KASI_LOGO_SRC;
+  // mobile's dock target — the stacked mark above the phonetic line
+  const c1m = document.getElementById('ch1LogoMobile'); if (c1m) c1m.src = KASI_LOGO_SRC;
+  /* The gleam is a masked gradient layer, not an image, so it needs the same
+     art as a MASK. Published as a custom property because the source is a
+     data-URI built at boot — the stylesheet cannot name it. */
+  document.documentElement.style.setProperty('--kasi-mask', 'url("' + KASI_LOGO_SRC + '")'); }
 const LOGO_ASPECT = 1500 / 428;
 const logoTex = new THREE.TextureLoader().load(KASI_LOGO_SRC);
 logoTex.encoding = THREE.sRGBEncoding;
@@ -2833,16 +3264,17 @@ const Hero = (() => {
        driver — the finale is a held frame you read, not a sign you drive over.
      ★ w AND d STAY WITH THE DISTANCE, NOT WITH THE LINE. They moved with the
        reversal (the farthest line takes the biggest plane) because glyph scale
-       is plane-per-canvas-pixel — w/1024 across, d/256 down — and is therefore
-       independent of how long the string is: a short line just sits centred
-       with more empty margin. What matters is that w/d stays ~2.5 on every
-       line, which is the anamorphic squeeze (the plane is 1.6× deeper than an
-       undistorted 4:1 mapping would be, so the glyphs stretch along z and read
-       upright from a shallow angle). Keep that ratio if you retune.
-     ★ The canvas → CanvasTexture → document.fonts.ready rebake is the same
-       pattern the ASCII glyph atlas uses. The rebake is NOT optional: Unbounded
-       is a remote webfont, so the first bake can land on the fallback face and
-       silently ship Arial Black on the hero shot. */
+       is plane-per-canvas-pixel — w/ROAD_CV_W across, d/ROAD_CV_H down — and is
+       therefore independent of how long the string is: a short line just sits
+       centred with more empty margin. What matters is that w/d stays ~2.5 on
+       every line, which is the anamorphic squeeze (the plane is 1.6× deeper
+       than an undistorted 4:1 mapping would be, so the glyphs stretch along z
+       and read upright from a shallow angle). Keep that ratio if you retune —
+       and note it is why a WIDER FACE cannot simply be given a wider plane:
+       raising w alone would flatten that correction and the glyphs would stop
+       reading upright from the finale camera.
+     ★ The face, the shared fit pass and the webfont rebake are all below, at
+       ROAD_FONT. */
   /* ★ All four z values carry the same +DRIVE_DIST offset the start line does,
      so the lettering stays beyond the line once the car has driven up to it. */
   /* ★ ENLARGED so the sentence is the PRIMARY element of the finale (item 11).
@@ -2859,38 +3291,64 @@ const Hero = (() => {
                                                  // full stop closes the sentence,
                                                  // matching the .sr-only copy in #s4
   ];
+  /* --- the road lettering's face -----------------------------------------
+     Good Times, the same display face the DOM headlines use, requested here as
+     a canvas font string rather than through --font-display (a 2D context
+     cannot read CSS custom properties). The fallbacks are the same stack for
+     the same reason: this bakes to a bitmap, so whatever face is resolved at
+     bake time is what ships until the rebake below replaces it. */
+  const ROAD_FONT   = "'Good Times','Unbounded','Arial Black',sans-serif";
+  const ROAD_PX_MAX = 230;               // the composed size; only shrinks to fit
+  const ROAD_CV_W = 1536, ROAD_CV_H = 384;   // higher-res bake: the planes are big now
+  const ROAD_FIT = ROAD_CV_W - 36;       // leave a little bleed either side
+  const roadSpec = px => '800 ' + px + 'px ' + ROAD_FONT;
+
+  /* ★ ONE SIZE FOR ALL FOUR LINES, MEASURED ACROSS THE WHOLE BLOCK — this used
+       to be a per-line guard and it cannot stay one.
+       The guard clamped each line independently, which was harmless only while
+       nothing actually overflowed: with Unbounded every line sat under the
+       canvas width, so all four baked at the full 230 and the block had uniform
+       glyph scale by accident rather than by construction.
+       Good Times is a substantially wider face — measured off the OTF at 230px:
+       THE RACE 1405, FOR AFRICA'S 2006, ENERGY FUTURE 2370, HAS STARTED. 2100,
+       against a 1500px fit — so three of the four lines clamp, and clamping
+       them SEPARATELY would bake them at 245/171/145/164px. That is a 1.7×
+       spread in letter size down a single sentence, which reads as a bug.
+       Measuring the worst line and giving every line that size keeps the block
+       one piece of type. The per-line size ramp the finale actually wants is
+       the PLANE ramp (w/d, 33/13 → 21/8), not the bake size.
+     ★ MEASURED AT RUNTIME, NOT HARDCODED. If the Assets/ font fails to load
+       (file://, a 404, a licence swap) the fallback face measures differently,
+       and this then picks the right size for whatever face really rendered
+       instead of shrinking Unbounded to fit a metric it never had. */
+  const roadFitCx = document.createElement('canvas').getContext('2d');
+  function roadFontSize(){
+    let px = ROAD_PX_MAX;
+    roadFitCx.font = roadSpec(ROAD_PX_MAX);
+    for (const L of ROAD_LINES) {
+      const wpx = roadFitCx.measureText(L.text).width;
+      if (wpx > ROAD_FIT) px = Math.min(px, Math.floor(ROAD_PX_MAX * ROAD_FIT / wpx));
+    }
+    return px;
+  }
+
   const roadTextMats = [];
+  const roadRebakes  = [];               // collected so one font event repaints all four
   ROAD_LINES.forEach((L, i) => {
     const cv = document.createElement('canvas');
-    cv.width = 1536; cv.height = 384;   // higher-res bake: the planes are big now
+    cv.width = ROAD_CV_W; cv.height = ROAD_CV_H;
     const cx = cv.getContext('2d');
-    const FIT = cv.width - 36;          // leave a little bleed either side
-    function bake(){
+    function bake(px){
       cx.clearRect(0, 0, cv.width, cv.height);
       cx.fillStyle = '#F3EFF7';
       cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      /* ★ Fit guard, not decoration. Unbounded 800 is a WIDE face and the
-         longest line here is 13 characters; at a flat 150px a long line can
-         measure past the 1024px canvas and get its last letters sliced off by
-         the bitmap edge — which looks like a texture bug, not a type choice.
-         The guard only engages when a line would actually overflow, so short
-         lines are untouched and glyph scale stays uniform down the block. If a
-         line ever does shrink visibly, raise that line's `d` (and its `w` with
-         it, keeping the ~2.5 ratio) rather than widening the canvas. */
-      let px = 230;
-      cx.font = "800 " + px + "px 'Unbounded','Arial Black',sans-serif";
-      const measured = cx.measureText(L.text).width;
-      if (measured > FIT) {
-        px = Math.floor(px * FIT / measured);
-        cx.font = "800 " + px + "px 'Unbounded','Arial Black',sans-serif";
-      }
+      cx.font = roadSpec(px);
       cx.fillText(L.text, cv.width / 2, cv.height / 2 + 9);
     }
-    bake();
+    bake(roadFontSize());
     const tex = new THREE.CanvasTexture(cv);
     tex.anisotropy = 8;
-    if (document.fonts && document.fonts.ready)
-      document.fonts.ready.then(() => { bake(); tex.needsUpdate = true; });
+    roadRebakes.push(() => { bake(roadFontSize()); tex.needsUpdate = true; });
     const mat = new THREE.MeshBasicMaterial({ map:tex, transparent:true,
       opacity:0, depthWrite:false });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(L.w, L.d), mat);
@@ -2912,6 +3370,36 @@ const Hero = (() => {
     envGroup.add(m);
     roadTextMats.push(mat);
   });
+
+  /* --- rebake once the real face is in ------------------------------------
+     The canvas → CanvasTexture → font-event rebake is the same pattern the
+     ASCII glyph atlas uses, and it is NOT optional: the display face is a
+     webfont, so the first bake can land on the fallback and silently ship
+     Arial Black on the hero shot.
+
+     ★ ALL FOUR REBAKE TOGETHER, which is now a correctness requirement rather
+       than tidiness. The size is derived from the widest line across the whole
+       block, so a per-line rebake could repaint one line at the new face's size
+       while its neighbours still carried the old one — a sentence baked at two
+       sizes for however long the stragglers took.
+     ★ document.fonts.load() FIRST, and this is the part that is easy to get
+       wrong. A canvas ctx.font assignment does NOT trigger a webfont fetch — it
+       silently resolves to whatever is already available. document.fonts.ready
+       alone only promises that fonts already REQUESTED have settled, so on a
+       fast first paint it can resolve before Good Times has been asked for by
+       anything, and the road would keep the fallback bake forever. Asking for
+       the face explicitly makes the request, and awaiting both means the rebake
+       runs after it has actually arrived.
+     ★ .catch() and not .then() only — a failed font load must still fall
+       through to the rebake, because roadFontSize() re-measures whatever face
+       did resolve and the fallback bake needs that same fit pass. */
+  if (document.fonts) {
+    const repaintRoad = () => { for (const r of roadRebakes) r(); };
+    Promise.all([
+      document.fonts.load(roadSpec(ROAD_PX_MAX)).catch(() => {}),
+      document.fonts.ready,
+    ]).then(repaintRoad).catch(repaintRoad);
+  }
 
   /* --- the road as a storytelling element (item 13) ------------------------
      The tarmac in front of the car carries the eye down to the statement via
@@ -3328,10 +3816,90 @@ const Hero = (() => {
        window and it moves for both axes by construction. */
   const BATTERY_X = -0.08;
   const BATTERY_Y = -0.06;
+
+  /* --- MOBILE gets its OWN pair, and a live slider dock to set them ---------
+     Everything in the block above is still true of the DESKTOP numbers: they
+     are baked, and there is no runtime path that changes them.
+
+     Portrait is a different framing problem, though, and the note above is why:
+     the offset is world-space and the desktop camera holds a fixed 38° vertical
+     fov, so one pair of numbers is genuinely resolution-independent — across
+     DESKTOP. heroViewport() widens to 54° below the 720px breakpoint, which
+     changes how much world a given offset covers on screen, and portrait also
+     puts the section-1 copy directly under the pack rather than beside it. The
+     desktop pair does not transfer.
+
+     So: a second pair, mobile-only, tuned on the device by the #batteryDock
+     sliders (the dock only exists under the same 720px media query the fov
+     switch uses). Values persist in localStorage so a tuning session survives a
+     reload, and the resting-pose defaults below are what ships if nothing has
+     been stored.
+
+     ★ THE RAMP IS SHARED, WHICH IS WHAT KEEPS THE MERGE SAFE. Both axes still
+       reach exactly 0 by p=0.55, before PACK_MERGE_FROM (0.600), no matter what
+       the sliders are set to — so no slider value can seat the pack off-centre
+       in the car's belly. The control moves the ANCHOR the cell floats around
+       during the build; the float itself (the tumble) is unchanged, because the
+       tumble rotates the InstancedMesh about its own origin and translating the
+       object carries the centre of rotation with it. */
+  const BATTERY_MOBILE_DEFAULT = { x: -0.08, y: -0.06, s: 1 };
+  const BATT_KEY = 'kasiBatteryMobile';
+  let MOBILE_BATTERY_X = BATTERY_MOBILE_DEFAULT.x;
+  let MOBILE_BATTERY_Y = BATTERY_MOBILE_DEFAULT.y;
+  let MOBILE_BATTERY_S = BATTERY_MOBILE_DEFAULT.s;
+  try {
+    const saved = JSON.parse(localStorage.getItem(BATT_KEY) || 'null');
+    if (saved && isFinite(saved.x) && isFinite(saved.y)) {
+      MOBILE_BATTERY_X = saved.x; MOBILE_BATTERY_Y = saved.y;
+      // `s` post-dates x/y, so a stored pair from before it existed is still valid
+      if (isFinite(saved.s) && saved.s > 0) MOBILE_BATTERY_S = saved.s;
+    }
+  } catch (_) { /* private mode / malformed value → ship the defaults */ }
+
   // held through the build, ramped out over 0.40→0.55 — one curve, both axes
   const batteryRamp = (pv) => 1 - smoothstep(clamp01((pv - 0.40) / 0.15));
-  function batteryOffsetX(pv){ return BATTERY_X * batteryRamp(pv); }
-  function batteryOffsetY(pv){ return BATTERY_Y * batteryRamp(pv); }
+  function batteryOffsetX(pv){
+    return (heroMQ.matches ? MOBILE_BATTERY_X : BATTERY_X) * batteryRamp(pv);
+  }
+  function batteryOffsetY(pv){
+    return (heroMQ.matches ? MOBILE_BATTERY_Y : BATTERY_Y) * batteryRamp(pv);
+  }
+  /* --- and the SIZE of the asset, on the same ramp ------------------------
+     Scales the whole pack object about its own origin, so it is a framing
+     control exactly like X and Y: on a phone the cell can read too small
+     against the copy (or too large against the grid it becomes), and that is a
+     portrait composition decision, not a model change.
+
+     ★ IT RETURNS TO EXACTLY 1 BEFORE THE MERGE, via the SAME batteryRamp the
+       offsets use. This is not cosmetic caution: applyPack() seats the grid
+       into a socket derived from CAR.box, and applyCells() lays the per-cell
+       matrices out at CELL_PITCH. A pack still scaled at 1.4 when it arrives
+       would push cells out through the floor and the sidepods. Both the offset
+       and the size are BUILD-TIME framing only; by p=0.55 the pack is back to
+       the geometry the rest of the scene was authored against.
+     ★ Desktop is always 1 — there is no desktop control and no stored value
+       can reach it. */
+  function batteryScale(pv){
+    if (!heroMQ.matches) return 1;
+    return 1 + (MOBILE_BATTERY_S - 1) * batteryRamp(pv);
+  }
+  /* Setters for the mobile dock. Desktop is untouched by design — the dock is
+     not rendered above 720px and these never run there. */
+  function setMobileBattery(x, y, s){
+    if (isFinite(x)) MOBILE_BATTERY_X = x;
+    if (isFinite(y)) MOBILE_BATTERY_Y = y;
+    if (isFinite(s) && s > 0) MOBILE_BATTERY_S = s;
+    try { localStorage.setItem(BATT_KEY, JSON.stringify(
+      { x: MOBILE_BATTERY_X, y: MOBILE_BATTERY_Y, s: MOBILE_BATTERY_S })); } catch (_) {}
+    /* The pack is repositioned by applyPack() from the live values on the next
+       frame, so a repaint is only needed when the loop is parked (the hero is
+       inactive during a race) — repaint() no-ops in exactly that case. */
+    repaint();
+  }
+  function getMobileBattery(){
+    return { x: MOBILE_BATTERY_X, y: MOBILE_BATTERY_Y, s: MOBILE_BATTERY_S,
+             defaults: BATTERY_MOBILE_DEFAULT };
+  }
 
   /* ★ AN EVEN GRID HAS NO CENTRE CELL, so one is nominated. CELL0 is the cell
        the page opens on — the single object in scene 1 — and the camera's
@@ -4143,6 +4711,12 @@ const Hero = (() => {
     if (!cells) return;
     const bx = batteryOffsetX(pv);         // tuning offsets, 0 by the time we merge
     const by = batteryOffsetY(pv);
+    const bs = batteryScale(pv);           // ...and 1 by then, on the same ramp
+    /* Written unconditionally, on the same object and every frame, exactly like
+       the position: scrubbing backwards has to restore the build-time size as
+       reliably as it restores the build-time offset. */
+    cells.scale.setScalar(bs);
+    if (links) links.scale.setScalar(bs);  // the bus bars are laid out in pack space
     const m = packMergeM(pv);
     // ★ explicit reset, not just an early return — scrubbing backwards past
     //   the merge must put the pack back at its resting X/Y, or it stays welded
@@ -4168,7 +4742,19 @@ const Hero = (() => {
      With the reweave, ch1 now centres at p ~= 0.12 (it used to be ~0.148),
      so the hand-off window closes earlier — hence 0.015 -> 0.13. */
   const heroLogo = document.querySelector('#heroTitle .kasi');
-  const ch1Logo  = document.getElementById('ch1Logo');
+  /* ★ TWO TARGETS, ONE FLIGHT. Desktop lands the mark INSIDE the headline, as
+       the word "KASI" (#ch1Logo, sized in em off the cap height). Portrait
+       lands it ABOVE THE PHONETIC LINE as a mark in its own right
+       (#ch1LogoMobile) — on mobile the headline is plain text and reads "KASI
+       is a battery company." further down the scroll, so there is no inline
+       slot to fly into.
+       Everything downstream is unchanged: the flight is still a FLIP onto the
+       target's live rect, so switching which element owns the slot switches
+       where the mark lands and nothing else. Chosen from the same media query
+       heroViewport() uses, so the fov switch and the dock never disagree. */
+  const ch1Logo   = document.getElementById('ch1Logo');
+  const ch1LogoM  = document.getElementById('ch1LogoMobile');
+  const dockTarget = () => (heroMQ.matches ? ch1LogoM : ch1Logo) || ch1Logo;
   const DOCK_A = 0.015, DOCK_B = 0.13;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   /* ★ NOTHING HERE MAY READ LAYOUT PER FRAME. The old version wrote the hero
@@ -4183,12 +4769,13 @@ const Hero = (() => {
   let restRect = null;                 // hero logo's untransformed viewport rect (#landing is fixed → scroll-invariant)
   let dockTo   = null;                 // { pageLeft, pageTop, width } for ch1Logo
   function measureDock(){
-    if (!heroLogo || !ch1Logo) return;
+    const target = dockTarget();
+    if (!heroLogo || !target) return;
     const prev = heroLogo.style.transform;
     heroLogo.style.transform = '';     // measure the CSS resting pose, not our own output
     restRect = heroLogo.getBoundingClientRect();
     heroLogo.style.transform = prev;
-    const r = ch1Logo.getBoundingClientRect();   // .rv removed → this IS the final pose
+    const r = target.getBoundingClientRect();   // .rv removed → this IS the final pose
     dockTo = r.width ? { pageLeft: r.left + scrollX, pageTop: r.top + scrollY, width: r.width } : null;
   }
   /* ★ DRIVEN BY THE RAW SCROLL FRACTION, NOT THE DAMPED p. The destination is
@@ -4200,20 +4787,21 @@ const Hero = (() => {
      moves in lockstep with the section it is flying into. */
   let dockLanded = null;               // tri-state: null = unknown (force first write)
   function dockHeroLogo(rawP){
-    if (!heroLogo || !ch1Logo) return;
+    const target = dockTarget();
+    if (!heroLogo || !target) return;
     const e = reduceMotion ? (rawP > DOCK_A ? 1 : 0)
                            : smoothstep(clamp01((rawP - DOCK_A) / (DOCK_B - DOCK_A)));
     if (e >= 1) {                      // landed: hand over to the real element
       if (dockLanded !== true) {       // ...once, not every frame for the rest of the page
         heroLogo.style.opacity = '0';
-        ch1Logo.style.visibility = '';
+        target.style.visibility = '';
         dockLanded = true;
       }
       return;
     }
     if (!dockTo || !restRect || !restRect.width) { measureDock(); if (!dockTo) return; }
     if (dockLanded !== false) {
-      ch1Logo.style.visibility = 'hidden';   // still holds layout space, so nothing reflows
+      target.style.visibility = 'hidden';    // still holds layout space, so nothing reflows
       heroLogo.style.opacity = '1';
       dockLanded = false;
     }
@@ -4232,7 +4820,21 @@ const Hero = (() => {
   addEventListener('load', remeasureLayout);
   if (heroLogo) heroLogo.addEventListener('load', remeasureLayout);
   if (ch1Logo)  ch1Logo.addEventListener('load', remeasureLayout);   // its height moves the document
+  if (ch1LogoM) ch1LogoM.addEventListener('load', remeasureLayout);  // ditto, on the mobile stack
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasureLayout);
+  /* Crossing the breakpoint swaps which element owns the slot, so the cached
+     destination is about a target that is now display:none. Re-measure, and
+     clear the landed flag so the next frame re-decides which of the two images
+     is the visible one — otherwise whichever was hidden mid-flight stays
+     hidden on the other side of the query. */
+  const onHeroMQ = () => {
+    if (ch1Logo)  ch1Logo.style.visibility  = '';
+    if (ch1LogoM) ch1LogoM.style.visibility = '';
+    dockLanded = null;
+    remeasureLayout();
+  };
+  if (heroMQ.addEventListener) heroMQ.addEventListener('change', onHeroMQ);
+  else if (heroMQ.addListener) heroMQ.addListener(onHeroMQ);          // older Safari
 
   /* --- scroll: set the TARGET progress; frame() eases p toward it so the
      twist stays buttery regardless of wheel-notch granularity --- */
@@ -4240,6 +4842,26 @@ const Hero = (() => {
      a faithful preview, and memoised so a scroll tick that doesn't change the
      rendered value doesn't touch the DOM at all. */
   let lastHintOp = '';
+  /* Two more landing-state elements, both toggled here rather than by their own
+     scroll listeners: this function already runs on every scroll tick from both
+     drivers (ScrollTrigger and the fallback) AND from scrub(), so anything
+     hooked in here previews correctly and there is still exactly one scroll
+     handler in the page.
+       • #creditsDock — visible on arrival, gone on the first scroll (its CSS
+         does the fast directional exit).
+       • #heroTitle.lit — the wordmark gleam, which may only run while the mark
+         is in its CSS resting pose, i.e. before the dock flight starts.
+     ★ ONE THRESHOLD FOR BOTH, AND IT IS BELOW DOCK_A (0.015). The gleam mirrors
+       the mark's rest geometry, so it has to be off before dockHeroLogo() moves
+       anything; sharing the threshold with the credits means the arrival state
+       breaks up as a single gesture rather than in two stages.
+     ★ Memoised on lastLanded — these are class writes on elements with
+       transitions, and re-asserting a class every tick is free but re-reading
+       it is not. */
+  const creditsDock = document.getElementById('creditsDock');
+  const heroTitle   = document.getElementById('heroTitle');
+  const LANDED_UNTIL = 0.006;
+  let lastLanded = null;
   function applyScrollChrome(pv){
     /* ★ 0.94, not 0.965. The invest button now pulses, and a pulse needs a
          beat or two on screen to establish itself as one — at 0.965 it faded
@@ -4248,6 +4870,12 @@ const Hero = (() => {
     startWrap.classList.toggle('on', pv > 0.94);
     const h = Math.max(0, 1 - pv * 6).toFixed(3);
     if (h !== lastHintOp) { scrollHint.style.opacity = h; lastHintOp = h; }
+    const atLanding = pv <= LANDED_UNTIL;
+    if (atLanding !== lastLanded) {
+      if (creditsDock) creditsDock.classList.toggle('stowed', !atLanding);
+      if (heroTitle)   heroTitle.classList.toggle('lit', atLanding);
+      lastLanded = atLanding;
+    }
   }
   function onScroll(){
     pTarget = clamp01(scrollY / SCROLL_MAX);
@@ -4604,6 +5232,12 @@ const Hero = (() => {
       carShown: Math.max(ST.xray, ST.carVis),
       cells: cells ? cells.visible : null,
       cellsX: cells ? cells.position.x : null,
+      /* which element owns the wordmark's landing slot at this viewport —
+         #ch1Logo inside the headline on desktop, #ch1LogoMobile above the
+         phonetic line in portrait. Asserting this is cheaper than inferring
+         the breakpoint from a screenshot of a mark mid-flight. */
+      dockTargetId: (dockTarget() || {}).id || null,
+      cellsScale: cells ? cells.scale.x : null,
       cellsUp: cellReveal.reduce((a,b) => a + (b > 0.5 ? 1 : 0), 0),
       /* highest world-Y among visible cell instances — for the "no cell pokes
          above the car floor during the merge" check (item 8). */
@@ -4623,9 +5257,11 @@ const Hero = (() => {
       wheelAngle: spokeDiscs.length ? spokeDiscs[0].disc.rotation.x : null,
       spokeVis: spokeDiscs.length ? spokeDiscs[0].disc.visible : null };
   }
-  /* The battery X/Y setters and getters that used to sit here are gone with the
-     #batteryDock sliders — BATTERY_X / BATTERY_Y are now baked consts. */
-  return { fadeOut, show, setStops, scrub, repaint, probe };
+  /* Battery X/Y: DESKTOP stays baked (BATTERY_X / BATTERY_Y, no runtime path).
+     The pair below is the MOBILE one, driven by the #batteryDock sliders, which
+     only exist under the 720px breakpoint. */
+  return { fadeOut, show, setStops, scrub, repaint, probe,
+           setMobileBattery, getMobileBattery };
 })();
 
 /* =====================================================================
@@ -4816,6 +5452,60 @@ const Hero = (() => {
       creditsDock.classList.remove('open');
       creditsBtn.setAttribute('aria-expanded', 'false');
     });
+  }
+
+  /* --- #batteryDock: mobile-only battery X/Y anchor sliders ----------------
+     A designer control, not a user-facing one: it moves the point the cell
+     floats around during the build so the pack's spacing can be judged against
+     the portrait layout on the actual device. Desktop is deliberately out of
+     scope — the CSS hides the dock above 720px and Hero reads the baked
+     BATTERY_X / BATTERY_Y there — so nothing here can shift desktop framing.
+
+     Values persist through Hero.setMobileBattery (localStorage), and the pack
+     follows on the very next frame because applyPack() reads the live pair. --- */
+  {
+    const dock = $('#batteryDock');
+    const btn  = $('#batteryDockBtn');
+    const bx = $('#battX'), by = $('#battY'), bs = $('#battS');
+    const bxv = $('#battXVal'), byv = $('#battYVal'), bsv = $('#battSVal');
+    const reset = $('#battReset');
+    if (dock && btn && bx && by && bs && Hero.getMobileBattery){
+      const fmt  = v => (v < 0 ? '' : '+') + v.toFixed(3);
+      const fmtS = v => v.toFixed(2) + '×';
+      function paint(){
+        const st = Hero.getMobileBattery();
+        bx.value = st.x; by.value = st.y; bs.value = st.s;
+        bxv.textContent = fmt(st.x); byv.textContent = fmt(st.y);
+        bsv.textContent = fmtS(st.s);
+      }
+      /* 'input', not 'change': the point of a slider here is that the pack
+         tracks the thumb while it is being dragged. */
+      const push = () => {
+        Hero.setMobileBattery(parseFloat(bx.value), parseFloat(by.value),
+                              parseFloat(bs.value));
+        bxv.textContent = fmt(parseFloat(bx.value));
+        byv.textContent = fmt(parseFloat(by.value));
+        bsv.textContent = fmtS(parseFloat(bs.value));
+      };
+      bx.addEventListener('input', push);
+      by.addEventListener('input', push);
+      bs.addEventListener('input', push);
+      reset.addEventListener('click', () => {
+        const d = Hero.getMobileBattery().defaults;
+        Hero.setMobileBattery(d.x, d.y, d.s);
+        paint();
+      });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = dock.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
+      /* Dragging a slider must not also spin the hero canvas or scroll the
+         story out from under the thing being tuned. */
+      for (const el of [bx, by, bs])
+        el.addEventListener('pointerdown', e => e.stopPropagation());
+      paint();
+    }
   }
 
   /* --- ambient sound toggle (low drone layered on the game's AudioEngine) --- */

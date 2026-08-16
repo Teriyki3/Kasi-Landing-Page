@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KASI — Cells for the Continent's Grid</title>
+<title>KASI: Cells for the Continent's Grid</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -266,8 +266,10 @@
      tracks the cap height). Mobile docks it ABOVE the phonetic line instead, as
      a mark in its own right — so it is sized in its own terms, not the type's.
      Hidden by default; the mobile block below turns it on. */
+  .kasi-stack-wrap{display:none;position:relative;}
   .kasi-stack{display:none;width:min(190px,52vw);height:auto;
     margin:0 0 22px;}
+  .kasi-stack-gleam{display:none;}
   /* the mobile-only claim, positioned in the CSS block for the breakpoint */
   #s1Claim{display:none;}
 
@@ -330,12 +332,18 @@
        misprint — and the two boxes are set at two different breakpoints. Naming
        the geometry once is what makes drift impossible; when the mobile block
        narrows the mark, the sheen narrows with it for free. */
+  /* ★ #kasiMark IS THE BOX; the image and the gleam just fill it. The two used
+       to be absolutely-positioned SIBLINGS that each restated left/top/width,
+       which kept them in register at rest but not in flight: dockHeroLogo()
+       transforms one element, so only that one moved. One shared frame means
+       the sheen is carried by the flight for free — see the gleam note below. */
   #heroTitle{position:absolute;inset:0;z-index:1;pointer-events:none;
     transition:opacity .4s ease;
     --mark-w:clamp(220px,34vw,540px);--mark-top:clamp(20px,6vh,56px);}
-  #heroTitle .kasi{position:absolute;left:50%;top:var(--mark-top);
-    transform:translateX(-50%);width:var(--mark-w);height:auto;
+  #kasiMark{position:absolute;left:50%;top:var(--mark-top);
+    transform:translateX(-50%);width:var(--mark-w);
     display:block;pointer-events:none;}
+  #heroTitle .kasi{display:block;width:100%;height:auto;pointer-events:none;}
 
   /* ---- the cinematic gleam over the wordmark (mobile) ---------------------
      A specular sweep that travels across the K, A, S and I and is CLIPPED TO
@@ -345,20 +353,20 @@
      across the background, which is what separates a premium sheen from a
      rotating-banner shine.
 
-     ★ IT MIRRORS .kasi's REST GEOMETRY, NOT ITS LIVE ONE, and that is why it
-       only runs while the mark IS at rest. dockHeroLogo() rewrites .kasi's
-       transform every frame of the flight; tracking that here would mean a
-       second per-frame style write on the one animation the whole page is
-       judged by. Instead applyScrollChrome() drops #heroTitle.lit the moment
-       the scroll leaves the top, so the gleam is a LANDING-STATE flourish and
-       the flight is left alone. Scroll back up and it returns.
+     ★ IT IS A CHILD OF #kasiMark, NOT A SIBLING OF THE IMAGE, and that is what
+       lets it run for the whole experience. dockHeroLogo() rewrites #kasiMark's
+       transform every frame of the flight; sitting inside that box, the sheen
+       is carried along by the same single style write rather than needing a
+       second one — so there is no per-frame cost and no reason to switch the
+       gleam off while the mark is moving. (It used to mirror the mark's REST
+       geometry as a sibling, which is why it had to be gated on
+       #heroTitle.lit — a landing-state flourish only. That gate is gone.)
      ★ aspect-ratio is LOGO_ASPECT (1500/428) restated. The mask has to sit on
        a box the same shape as the image or the sweep shears across the glyphs.
-     ★ The sweep is ~1.1 s of a 6 s cycle, so the mark is unlit ~82% of the
+     ★ The sweep is ~0.75 s of a 4 s cycle, so the mark is unlit ~81% of the
        time. That ratio IS the "subtle" — a wider band or a shorter period
-       reads as a loading shimmer. */
-  #kasiGleam{position:absolute;left:50%;top:var(--mark-top);
-    transform:translateX(-50%);width:var(--mark-w);
+       reads as a loading shimmer. The period is set in the mobile block. */
+  #kasiGleam{position:absolute;left:0;top:0;width:100%;
     aspect-ratio:1500/428;display:none;pointer-events:none;
     -webkit-mask-image:var(--kasi-mask);mask-image:var(--kasi-mask);
     -webkit-mask-size:100% 100%;mask-size:100% 100%;
@@ -405,22 +413,17 @@
   #railLabel{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;
     color:var(--fg-soft);text-transform:uppercase;writing-mode:vertical-rl;}
 
-  /* ---- page controls: theme + sound, paired top-right ---- */
-  #soundToggle,#themeToggle{position:fixed;top:24px;z-index:26;
+  /* ---- page control: theme, top-right ---- */
+  #themeToggle{position:fixed;top:24px;z-index:26;
     width:34px;height:34px;padding:0;border:1px solid var(--hair);
     border-radius:50%;background:transparent;color:var(--fg);cursor:pointer;
     display:flex;align-items:center;justify-content:center;
     transition:opacity .4s ease,border-color .3s,color .5s;}
-  #soundToggle:hover,#themeToggle:hover{border-color:var(--fg);}
-  #soundToggle svg,#themeToggle svg{width:16px;height:16px;display:block;
+  #themeToggle:hover{border-color:var(--fg);}
+  #themeToggle svg{width:16px;height:16px;display:block;
     fill:none;stroke:currentColor;stroke-width:1.6;
     stroke-linecap:round;stroke-linejoin:round;}
   #themeToggle{right:24px;}
-  #soundToggle{right:68px;color:var(--fg-soft);}
-  /* the two sound-wave arcs only exist when the ambience is on */
-  #soundToggle .waves{opacity:0;transition:opacity .3s;}
-  #soundToggle.on{color:var(--orange);}
-  #soundToggle.on .waves{opacity:1;}
   /* sun (light mode) vs moon (dark mode) — one is always hidden */
   #themeToggle .moon{display:none;}
   #themeToggle.dark .moon{display:block;}
@@ -434,47 +437,12 @@
      so restoring light mode now means adding light variants to PALETTES. */
   #themeToggle{display:none;}
 
-  /* The palette dock (#paletteDock) is gone for good — the palette is locked to
-     Twilight. The battery tuning dock is back as a MOBILE-ONLY control; see
-     below. Desktop's right:24px column is still the charge rail alone.
-
-     ---- #batteryDock: designer control for the mobile battery anchor ---------
-     Collapsed to a single pill by default so it never sits over the story it is
-     used to judge; tapping it opens the two sliders. It is display:none above
-     720px — desktop framing is baked and has no runtime path — and it hides
-     entirely once the race starts, along with the rest of the story chrome.
-     ★ Top-LEFT. Every other fixed element is spoken for: the charge rail owns
-       the bottom strip in portrait, the credits trigger sits at bottom-left
-       above it, and sound/theme are top-right. */
-  #batteryDock{display:none;}
-  #batteryDock button{font-family:var(--font-mono);cursor:pointer;}
-  #batteryDockBtn{padding:6px 11px;border:1px solid var(--hair);border-radius:999px;
-    background:var(--ground);color:var(--fg-soft);font-size:9px;letter-spacing:.14em;
-    text-transform:uppercase;}
-  #batteryDockBtn[aria-expanded="true"]{color:var(--fg);border-color:var(--fg);}
-  #batteryDockBody{display:none;margin-top:8px;padding:12px;width:min(260px,72vw);
-    border:1px solid var(--hair);border-radius:10px;background:var(--ground);}
-  #batteryDock.open #batteryDockBody{display:block;}
-  #batteryDockBody label{display:block;margin-bottom:12px;}
-  #batteryDockBody .lbl{display:flex;justify-content:space-between;
-    font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--fg-soft);margin-bottom:6px;}
-  #batteryDockBody .lbl i{font-style:normal;color:var(--accent);
-    font-variant-numeric:tabular-nums;}
-  #batteryDockBody input[type=range]{width:100%;height:26px;background:transparent;
-    -webkit-appearance:none;appearance:none;touch-action:pan-y;}
-  #batteryDockBody input[type=range]::-webkit-slider-runnable-track{
-    height:3px;border-radius:2px;background:var(--hair);}
-  #batteryDockBody input[type=range]::-moz-range-track{
-    height:3px;border-radius:2px;background:var(--hair);}
-  #batteryDockBody input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
-    width:20px;height:20px;margin-top:-9px;border-radius:50%;border:none;
-    background:var(--accent);}
-  #batteryDockBody input[type=range]::-moz-range-thumb{
-    width:20px;height:20px;border:none;border-radius:50%;background:var(--accent);}
-  #battReset{width:100%;padding:7px 0;border:1px solid var(--hair);border-radius:6px;
-    background:transparent;color:var(--fg-soft);font-size:9px;letter-spacing:.14em;
-    text-transform:uppercase;}
+  /* The palette dock (#paletteDock) and the battery tuning dock (#batteryDock)
+     are both gone for good: the palette is locked to Twilight and the battery
+     anchor is locked to the baked constants in the Hero module (desktop and
+     mobile keep their own separate values). Neither has a runtime path any
+     more. Desktop's right:24px column is the charge rail alone; mobile's
+     top-left corner is now empty. */
 
   @media (max-width:720px){
     /* same climb as the rail: the rail owns the bottom:16px strip edge-to-edge,
@@ -500,12 +468,58 @@
       transition:opacity .22s cubic-bezier(.4,0,1,1),
                  transform .22s cubic-bezier(.4,0,1,1),
                  visibility 0s linear .22s;}
-    /* the dock only exists here — it tunes the mobile pair and nothing else */
-    #batteryDock{display:block;position:fixed;left:14px;top:14px;z-index:27;}
-    /* the gleam is a portrait landing-state flourish; .lit is driven by
-       applyScrollChrome() and is only on at the very top of the page */
-    #heroTitle.lit #kasiGleam{display:block;
-      animation:kasiGleam 6s cubic-bezier(.45,0,.2,1) infinite;}
+    /* ---- the gleam runs for the WHOLE portrait experience ------------------
+       It used to be gated on #heroTitle.lit, i.e. the landing state only, because
+       the sheen mirrored the mark's REST geometry and the flight would have
+       shorn it off the glyphs. The gleam now lives INSIDE #kasiMark, which is
+       the element dockHeroLogo() transforms, so it inherits the flight for free
+       and there is nothing left to gate. Two carriers, never both on screen:
+       #kasiGleam rides the hero mark from load through the flight, and
+       .kasi-stack-gleam takes over on the docked mark once it has landed. Same
+       4s cycle on both, so the cadence never breaks across the hand-off. */
+    #kasiGleam{display:block;
+      animation:kasiGleam 4s cubic-bezier(.45,0,.2,1) infinite;}
+    /* ---- the docked mark LOCKS and becomes the section's anchor -------------
+       ★ align-self:stretch IS NOT A LAYOUT CHANGE. .chapter.lead is
+         align-items:flex-end, so .wrap was shrink-wrapped to its copy and sat at
+         the bottom of the 190vh section. Stretching it and re-bottoming its
+         children with justify-content:flex-end puts every line in exactly the
+         same place, but gives the sticky mark a containing block that spans the
+         whole section instead of just the copy. Document height is untouched,
+         so every p constant in the file keeps its meaning.
+       ★ The copy is unpositioned, so it paints UNDER the positioned sticky
+         wrapper: the phonetic and the definition travel up, pass behind the
+         mark and leave, while the mark holds. The sticky releases when .wrap's
+         bottom reaches it, near the end of scene 1, and the mark exits with the
+         section. */
+    /* ★ THE BOTTOM PAD MOVES FROM THE SECTION ONTO THE LAST LINE OF COPY, and
+         that is what gives the lock its runway. A sticky element is confined to
+         its containing block's CONTENT box — padding does not extend it — so
+         with .chapter.lead's 26vh sitting on #s1 the wrap's content box stopped
+         at the definition's last line and the mark had ~190px of travel: it
+         reached 14vh and was immediately dragged off again. As a margin on .def
+         the same 26vh is inside the content box, so it both holds the copy off
+         the section floor exactly as the padding did (identical rendered
+         position, identical 190vh section) and hands the mark ~400px of hold.
+         Horizontal padding stays on .chapter; only this axis matters here. */
+    #s1{padding-bottom:0;}
+    #s1 .wrap{align-self:stretch;display:flex;flex-direction:column;
+      justify-content:flex-end;}
+    #s1 .def{margin-bottom:26vh;}
+    .kasi-stack-wrap{display:block;position:sticky;top:14vh;z-index:2;
+      width:min(190px,52vw);align-self:flex-start;}
+    .kasi-stack-gleam{display:block;position:absolute;left:0;top:0;width:100%;
+      aspect-ratio:1500/428;pointer-events:none;
+      -webkit-mask-image:var(--kasi-mask);mask-image:var(--kasi-mask);
+      -webkit-mask-size:100% 100%;mask-size:100% 100%;
+      -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+      background-image:linear-gradient(102deg,
+        rgba(255,255,255,0) 41%, rgba(255,255,255,.28) 47%,
+        rgba(255,255,255,.9) 50%, rgba(255,255,255,.28) 53%,
+        rgba(255,255,255,0) 59%);
+      background-repeat:no-repeat;background-size:260% 100%;
+      mix-blend-mode:screen;opacity:0;
+      animation:kasiGleam 4s cubic-bezier(.45,0,.2,1) infinite;}
   }
 
   /* ---- grain overlay ---- */
@@ -536,9 +550,9 @@
     text-transform:uppercase;color:var(--fg-soft);}
 
   /* ---- hide all story chrome once the race is live ---- */
-  body.playing #story,body.playing #chargeRail,body.playing #soundToggle,
+  body.playing #story,body.playing #chargeRail,
   body.playing #heroTitle,body.playing #grain,body.playing #themeToggle,
-  body.playing #creditsDock,body.playing #batteryDock{display:none;}
+  body.playing #creditsDock{display:none;}
 
   /* ---- reduced motion + mobile ---- */
   @media (prefers-reduced-motion:reduce){
@@ -919,38 +933,8 @@
 <!-- film grain over everything -->
 <div id="grain"></div>
 
-<!-- ambience toggle -->
-<button id="soundToggle" aria-label="Toggle sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><g class="waves"><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></g></svg></button>
-
 <!-- light / dark theme toggle -->
 <button id="themeToggle" aria-label="Toggle dark mode" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></g><path class="moon" d="M20 13.6A8 8 0 0 1 10.4 4a8.2 8.2 0 1 0 9.6 9.6z"/></svg></button>
-
-<!-- The palette chooser (#paletteDock) lived here and is gone for good: the
-     palette is locked to Twilight.
-
-     #batteryDock is BACK, but narrower than the tool it replaces — it is now a
-     MOBILE-ONLY control, hidden above the 720px breakpoint, and it writes the
-     mobile pair only. Desktop framing stays baked in BATTERY_X / BATTERY_Y with
-     no runtime path, exactly as before. The two sliders move the anchor the
-     cell floats around during the build (see setMobileBattery); the float
-     itself is untouched, and the shared ramp still returns both axes to 0
-     before the pack merges into the car. -->
-<div id="batteryDock">
-  <button id="batteryDockBtn" type="button" aria-expanded="false"
-          aria-controls="batteryDockBody">Battery&nbsp;pos</button>
-  <div id="batteryDockBody">
-    <label><span class="lbl">X <i id="battXVal">0.000</i></span>
-      <input id="battX" type="range" min="-0.60" max="0.60" step="0.005"></label>
-    <label><span class="lbl">Y <i id="battYVal">0.000</i></span>
-      <input id="battY" type="range" min="-0.60" max="0.60" step="0.005"></label>
-    <!-- SIZE. Range is deliberately asymmetric in feel but symmetric in ratio:
-         0.4× to 2.5× either side of 1, which is as far as the framing stays a
-         framing decision rather than a different shot. -->
-    <label><span class="lbl">Size <i id="battSVal">1.00×</i></span>
-      <input id="battS" type="range" min="0.40" max="2.50" step="0.01"></label>
-    <button id="battReset" type="button">Reset</button>
-  </div>
-</div>
 
 <!-- credits: bottom-left, reveal on hover (desktop) / tap (mobile).
      The Sketchfab URLs are dropped from the visible text but survive as the
@@ -960,9 +944,9 @@
   <div id="creditsPanel" role="tooltip">
     Curated by Thierry Nzeukou ·
     <a href="https://sketchfab.com/3d-models/formula-1-car-e89589184eac42c08028db5cba3f6499"
-       target="_blank" rel="noopener">F1 Car</a> — Steven Samuel ·
+       target="_blank" rel="noopener">F1 Car</a> by Steven Samuel ·
     <a href="https://sketchfab.com/3d-models/m200-auxiliary-fuel-cell-eac338a3b33e4c11b5f7c8c927ecd4ee"
-       target="_blank" rel="noopener">M200 Cell</a> — QuakeShambler ·
+       target="_blank" rel="noopener">M200 Cell</a> by QuakeShambler ·
     <a href="http://creativecommons.org/licenses/by/4.0/"
        target="_blank" rel="noopener">CC BY 4.0</a>
   </div>
@@ -983,10 +967,15 @@
        gleam should be running on the first painted frame. applyScrollChrome()
        takes it off on the first scroll and puts it back if you return. -->
   <div id="heroTitle" class="lit">
-    <img class="kasi" id="kasiLogo" alt="KASI">
-    <!-- the specular sweep, clipped to the letterforms by the logo's own alpha
-         (see #kasiGleam). Purely decorative and purely mobile. -->
-    <span id="kasiGleam" aria-hidden="true"></span>
+    <!-- ★ #kasiMark IS WHAT FLIES. dockHeroLogo() transforms this wrapper, not
+         the <img>, so the gleam inside it travels with the letterforms instead
+         of being left behind at the rest pose. -->
+    <div id="kasiMark">
+      <img class="kasi" id="kasiLogo" alt="KASI">
+      <!-- the specular sweep, clipped to the letterforms by the logo's own alpha
+           (see #kasiGleam). Purely decorative and purely mobile. -->
+      <span id="kasiGleam" aria-hidden="true"></span>
+    </div>
     <!-- ★ NO TAGLINE HERE ANY MORE. It read "Cells for the continent's grid.
          Tested in the most extreme conditions." — which is word-for-word scene
          1's lede, one scroll further down. Two copies of one sentence, one of
@@ -1059,7 +1048,14 @@
            ★ NO .rv, for the same reason #ch1Logo has none: .rv parks the
              element 38px low until its observer fires, so the mark would
              fly to a slot that then slid out from under it. -->
-      <img class="kasi-stack" id="ch1LogoMobile" alt="KASI">
+      <!-- ★ THE WRAPPER IS THE STICKY ELEMENT, and it carries the docked mark's
+             own gleam. The mark lands here, rises with the copy, then locks at
+             top:14vh while the phonetic and the definition scroll on behind it
+             and off the screen. See .kasi-stack-wrap in the mobile block. -->
+      <div class="kasi-stack-wrap">
+        <img class="kasi-stack" id="ch1LogoMobile" alt="KASI">
+        <span class="kasi-stack-gleam" aria-hidden="true"></span>
+      </div>
       <!-- the name, said and then defined: a supporting line under the claim,
            not a beat of its own. -->
       <div class="ipa rv" style="--i:2">/ˈka·si/</div>
@@ -1101,7 +1097,7 @@
            data-nav="The scale" style="--h:150vh">
     <div class="wrap">
       <p class="lede rv">We're designing the cells that will power the continent's
-        grid — <b>tested in the most extreme conditions</b>.</p>
+        grid, <b>tested in the most extreme conditions</b>.</p>
     </div>
   </section>
 
@@ -1117,7 +1113,7 @@
       <h2 class="h-big rv"><span class="mask"><span>Built to break</span></span>
         <span class="mask"><span class="accent">what we make.</span></span></h2>
       <p class="lede rv" style="--i:1">Before a cell reaches the grid, <b>it will survive our
-        lab</b>. A motorsports circuit, built to break what we make — <b>so it never breaks
+        lab</b>. A motorsports circuit, built to break what we make, <b>so it never breaks
         where it matters</b>.</p>
     </div>
   </section>
@@ -1248,7 +1244,6 @@ if (!window.__KASI_GSAP)
    Modules (all in this file):
      PALETTE / CONFIG   – tuning constants
      Input              – keyboard state
-     AudioEngine        – WebAudio synth (engine, screech, UI beeps)
      GeoKit             – procedural geometry helpers (palm, camel, …)
      Assets             – CC0 GLB loading (truck + desert camp)
      Track              – tarmac course, dunes, oasis, scenery, crowd
@@ -1402,67 +1397,6 @@ const Input = (() => {
 
   return k;
 })();
-
-/* =====================================================================
-   AUDIO — engine hum, drift screech, countdown beeps, finish jingle.
-   ===================================================================== */
-const AudioEngine = {
-  ctx:null, engGain:null, osc1:null, osc2:null, scrGain:null, ok:false,
-
-  init(){
-    if (this.ok) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.ctx = ctx;
-      // engine: saw + square sub through a lowpass
-      const lp = ctx.createBiquadFilter();
-      lp.type='lowpass'; lp.frequency.value = 750;
-      this.engGain = ctx.createGain(); this.engGain.gain.value = 0;
-      this.osc1 = ctx.createOscillator(); this.osc1.type='sawtooth'; this.osc1.frequency.value = 60;
-      this.osc2 = ctx.createOscillator(); this.osc2.type='square';   this.osc2.frequency.value = 30;
-      const sub = ctx.createGain(); sub.gain.value = 0.5;
-      this.osc1.connect(lp); this.osc2.connect(sub); sub.connect(lp);
-      lp.connect(this.engGain); this.engGain.connect(ctx.destination);
-      this.osc1.start(); this.osc2.start();
-      // screech: looped white noise through a bandpass
-      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
-      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-      const bp = ctx.createBiquadFilter(); bp.type='bandpass';
-      bp.frequency.value = 950; bp.Q.value = 0.8;
-      this.scrGain = ctx.createGain(); this.scrGain.gain.value = 0;
-      src.connect(bp); bp.connect(this.scrGain); this.scrGain.connect(ctx.destination);
-      src.start();
-      this.ok = true;
-    } catch(e){ this.ok = false; }
-  },
-
-  /* short UI blip (countdown, finish) */
-  blip(freq, dur = 0.12, vol = 0.12){
-    if (!this.ok) return;
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-    o.type = 'square'; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g); g.connect(this.ctx.destination);
-    o.start(t); o.stop(t + dur + 0.02);
-  },
-
-  finishJingle(){ [660, 880, 1180].forEach((f,i)=>setTimeout(()=>this.blip(f,0.16,0.14), i*130)); },
-
-  update(speedRatio, throttle, slip, live, vol = 1){
-    if (!this.ok) return;
-    const t = this.ctx.currentTime, on = (live ? 1 : 0) * vol;
-    const f = 55 + speedRatio*185 + throttle*25;
-    this.osc1.frequency.setTargetAtTime(f, t, 0.06);
-    this.osc2.frequency.setTargetAtTime(f*0.5, t, 0.06);
-    this.engGain.gain.setTargetAtTime(on*(0.035 + throttle*0.045 + speedRatio*0.035), t, 0.08);
-    const scr = on * Math.min(1, Math.max(0, (slip - CFG.driftLatMin)/18)) * 0.14;
-    this.scrGain.gain.setTargetAtTime(scr, t, 0.05);
-  },
-};
 
 /* =====================================================================
    SCENE SETUP
@@ -3817,7 +3751,7 @@ const Hero = (() => {
   const BATTERY_X = -0.08;
   const BATTERY_Y = -0.06;
 
-  /* --- MOBILE gets its OWN pair, and a live slider dock to set them ---------
+  /* --- MOBILE gets its OWN pair, LOCKED IN the same way ---------------------
      Everything in the block above is still true of the DESKTOP numbers: they
      are baked, and there is no runtime path that changes them.
 
@@ -3829,32 +3763,23 @@ const Hero = (() => {
      puts the section-1 copy directly under the pack rather than beside it. The
      desktop pair does not transfer.
 
-     So: a second pair, mobile-only, tuned on the device by the #batteryDock
-     sliders (the dock only exists under the same 720px media query the fov
-     switch uses). Values persist in localStorage so a tuning session survives a
-     reload, and the resting-pose defaults below are what ships if nothing has
-     been stored.
+     So: a second pair, mobile-only. It was tuned on the device with the
+     #batteryDock sliders, which have since been deleted along with their
+     localStorage key (kasiBatteryMobile) and the Hero setter/getter pair. The
+     values below ARE the shipped framing on every phone — no stored tuning from
+     an old session can override them any more. Edit the three numbers here to
+     re-frame portrait; desktop keeps its own pair above and is unaffected.
 
-     ★ THE RAMP IS SHARED, WHICH IS WHAT KEEPS THE MERGE SAFE. Both axes still
-       reach exactly 0 by p=0.55, before PACK_MERGE_FROM (0.600), no matter what
-       the sliders are set to — so no slider value can seat the pack off-centre
-       in the car's belly. The control moves the ANCHOR the cell floats around
-       during the build; the float itself (the tumble) is unchanged, because the
-       tumble rotates the InstancedMesh about its own origin and translating the
-       object carries the centre of rotation with it. */
-  const BATTERY_MOBILE_DEFAULT = { x: -0.08, y: -0.06, s: 1 };
-  const BATT_KEY = 'kasiBatteryMobile';
-  let MOBILE_BATTERY_X = BATTERY_MOBILE_DEFAULT.x;
-  let MOBILE_BATTERY_Y = BATTERY_MOBILE_DEFAULT.y;
-  let MOBILE_BATTERY_S = BATTERY_MOBILE_DEFAULT.s;
-  try {
-    const saved = JSON.parse(localStorage.getItem(BATT_KEY) || 'null');
-    if (saved && isFinite(saved.x) && isFinite(saved.y)) {
-      MOBILE_BATTERY_X = saved.x; MOBILE_BATTERY_Y = saved.y;
-      // `s` post-dates x/y, so a stored pair from before it existed is still valid
-      if (isFinite(saved.s) && saved.s > 0) MOBILE_BATTERY_S = saved.s;
-    }
-  } catch (_) { /* private mode / malformed value → ship the defaults */ }
+     ★ THE RAMP IS SHARED, WHICH IS WHAT KEEPS THE MERGE SAFE. All three still
+       reach their neutral value (0, 0, 1) by p=0.55, before PACK_MERGE_FROM
+       (0.600), so the pack can never be seated off-centre or mis-sized in the
+       car's belly. They move the ANCHOR the cell floats around during the
+       build; the float itself (the tumble) is unchanged, because the tumble
+       rotates the InstancedMesh about its own origin and translating the object
+       carries the centre of rotation with it. */
+  const MOBILE_BATTERY_X = -0.08;
+  const MOBILE_BATTERY_Y = -0.06;
+  const MOBILE_BATTERY_S = 1;
 
   // held through the build, ramped out over 0.40→0.55 — one curve, both axes
   const batteryRamp = (pv) => 1 - smoothstep(clamp01((pv - 0.40) / 0.15));
@@ -3877,28 +3802,11 @@ const Hero = (() => {
        would push cells out through the floor and the sidepods. Both the offset
        and the size are BUILD-TIME framing only; by p=0.55 the pack is back to
        the geometry the rest of the scene was authored against.
-     ★ Desktop is always 1 — there is no desktop control and no stored value
-       can reach it. */
+     ★ Desktop is always 1 — the portrait scale is a portrait decision and
+       never reaches the desktop path. */
   function batteryScale(pv){
     if (!heroMQ.matches) return 1;
     return 1 + (MOBILE_BATTERY_S - 1) * batteryRamp(pv);
-  }
-  /* Setters for the mobile dock. Desktop is untouched by design — the dock is
-     not rendered above 720px and these never run there. */
-  function setMobileBattery(x, y, s){
-    if (isFinite(x)) MOBILE_BATTERY_X = x;
-    if (isFinite(y)) MOBILE_BATTERY_Y = y;
-    if (isFinite(s) && s > 0) MOBILE_BATTERY_S = s;
-    try { localStorage.setItem(BATT_KEY, JSON.stringify(
-      { x: MOBILE_BATTERY_X, y: MOBILE_BATTERY_Y, s: MOBILE_BATTERY_S })); } catch (_) {}
-    /* The pack is repositioned by applyPack() from the live values on the next
-       frame, so a repaint is only needed when the loop is parked (the hero is
-       inactive during a race) — repaint() no-ops in exactly that case. */
-    repaint();
-  }
-  function getMobileBattery(){
-    return { x: MOBILE_BATTERY_X, y: MOBILE_BATTERY_Y, s: MOBILE_BATTERY_S,
-             defaults: BATTERY_MOBILE_DEFAULT };
   }
 
   /* ★ AN EVEN GRID HAS NO CENTRE CELL, so one is nominated. CELL0 is the cell
@@ -4741,7 +4649,15 @@ const Hero = (() => {
      invisible, and from then on the in-flow image scrolls away on its own.
      With the reweave, ch1 now centres at p ~= 0.12 (it used to be ~0.148),
      so the hand-off window closes earlier — hence 0.015 -> 0.13. */
-  const heroLogo = document.querySelector('#heroTitle .kasi');
+  /* ★ THE FLYER IS #kasiMark, THE WRAPPER, NOT THE <img> INSIDE IT. The gleam
+       is the mark's sibling no longer but its child, so transforming the box
+       carries image and sheen together on one style write — which is what lets
+       the gleam keep running through the whole flight instead of being gated
+       off at the top of the page. Its rest geometry (left:50%, top:--mark-top,
+       width:--mark-w) moved onto the wrapper with it, so every measurement and
+       every transform below is unchanged. */
+  const heroLogo = document.getElementById('kasiMark');
+  const heroLogoImg = document.getElementById('kasiLogo');
   /* ★ TWO TARGETS, ONE FLIGHT. Desktop lands the mark INSIDE the headline, as
        the word "KASI" (#ch1Logo, sized in em off the cap height). Portrait
        lands it ABOVE THE PHONETIC LINE as a mark in its own right
@@ -4775,7 +4691,17 @@ const Hero = (() => {
     heroLogo.style.transform = '';     // measure the CSS resting pose, not our own output
     restRect = heroLogo.getBoundingClientRect();
     heroLogo.style.transform = prev;
+    /* ★ THE MOBILE TARGET'S WRAPPER IS position:sticky, so its rect is only the
+       page position we want while it is UNSTUCK. pageTop is cached here and
+       reused for the rest of the flight, so measuring a stuck element would
+       bake in wherever the page happened to sit. Neutralise the stick for the
+       read — same trick as the transform above, and just as cheap: this runs on
+       load / fonts-ready / resize / breakpoint change, never per frame. */
+    const wrap = target.closest('.kasi-stack-wrap');
+    const wrapPrev = wrap ? wrap.style.position : null;
+    if (wrap) wrap.style.position = 'static';
     const r = target.getBoundingClientRect();   // .rv removed → this IS the final pose
+    if (wrap) wrap.style.position = wrapPrev;
     dockTo = r.width ? { pageLeft: r.left + scrollX, pageTop: r.top + scrollY, width: r.width } : null;
   }
   /* ★ DRIVEN BY THE RAW SCROLL FRACTION, NOT THE DAMPED p. The destination is
@@ -4786,8 +4712,12 @@ const Hero = (() => {
      the coherent pairing: the mark is a pure function of scroll offset, so it
      moves in lockstep with the section it is flying into. */
   let dockLanded = null;               // tri-state: null = unknown (force first write)
+  /* What gets hidden during the flight. On mobile the mark is wrapped so it can
+     stick and carry its own gleam, and hiding only the <img> would leave that
+     gleam sweeping over an empty slot while the real mark is still in the air. */
+  const dockShell = (t) => (t && t.closest ? (t.closest('.kasi-stack-wrap') || t) : t);
   function dockHeroLogo(rawP){
-    const target = dockTarget();
+    const target = dockShell(dockTarget());
     if (!heroLogo || !target) return;
     const e = reduceMotion ? (rawP > DOCK_A ? 1 : 0)
                            : smoothstep(clamp01((rawP - DOCK_A) / (DOCK_B - DOCK_A)));
@@ -4818,7 +4748,8 @@ const Hero = (() => {
   }
   function remeasureLayout(){ measureScrollMax(); measureDock(); }
   addEventListener('load', remeasureLayout);
-  if (heroLogo) heroLogo.addEventListener('load', remeasureLayout);
+  // the wrapper has no load event; the image it holds does
+  if (heroLogoImg) heroLogoImg.addEventListener('load', remeasureLayout);
   if (ch1Logo)  ch1Logo.addEventListener('load', remeasureLayout);   // its height moves the document
   if (ch1LogoM) ch1LogoM.addEventListener('load', remeasureLayout);  // ditto, on the mobile stack
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasureLayout);
@@ -4828,8 +4759,8 @@ const Hero = (() => {
      is the visible one — otherwise whichever was hidden mid-flight stays
      hidden on the other side of the query. */
   const onHeroMQ = () => {
-    if (ch1Logo)  ch1Logo.style.visibility  = '';
-    if (ch1LogoM) ch1LogoM.style.visibility = '';
+    if (ch1Logo)  dockShell(ch1Logo).style.visibility  = '';
+    if (ch1LogoM) dockShell(ch1LogoM).style.visibility = '';
     dockLanded = null;
     remeasureLayout();
   };
@@ -5257,16 +5188,15 @@ const Hero = (() => {
       wheelAngle: spokeDiscs.length ? spokeDiscs[0].disc.rotation.x : null,
       spokeVis: spokeDiscs.length ? spokeDiscs[0].disc.visible : null };
   }
-  /* Battery X/Y: DESKTOP stays baked (BATTERY_X / BATTERY_Y, no runtime path).
-     The pair below is the MOBILE one, driven by the #batteryDock sliders, which
-     only exist under the 720px breakpoint. */
-  return { fadeOut, show, setStops, scrub, repaint, probe,
-           setMobileBattery, getMobileBattery };
+  /* Battery framing is baked on BOTH breakpoints now (BATTERY_X / BATTERY_Y for
+     desktop, MOBILE_BATTERY_X / _Y / _S for portrait) and there is no runtime
+     path to either pair — hence nothing to export for it. */
+  return { fadeOut, show, setStops, scrub, repaint, probe };
 })();
 
 /* =====================================================================
    INTERACTIONS — preloader, scroll reveals, animated counters, section
-   theming, charge-rail nav, ambient sound toggle. DOM-only; never touches
+   theming, charge-rail nav, credits dock. DOM-only; never touches
    the game loop or WebGL context.
    ===================================================================== */
 (function Interactions(){
@@ -5453,122 +5383,6 @@ const Hero = (() => {
       creditsBtn.setAttribute('aria-expanded', 'false');
     });
   }
-
-  /* --- #batteryDock: mobile-only battery X/Y anchor sliders ----------------
-     A designer control, not a user-facing one: it moves the point the cell
-     floats around during the build so the pack's spacing can be judged against
-     the portrait layout on the actual device. Desktop is deliberately out of
-     scope — the CSS hides the dock above 720px and Hero reads the baked
-     BATTERY_X / BATTERY_Y there — so nothing here can shift desktop framing.
-
-     Values persist through Hero.setMobileBattery (localStorage), and the pack
-     follows on the very next frame because applyPack() reads the live pair. --- */
-  {
-    const dock = $('#batteryDock');
-    const btn  = $('#batteryDockBtn');
-    const bx = $('#battX'), by = $('#battY'), bs = $('#battS');
-    const bxv = $('#battXVal'), byv = $('#battYVal'), bsv = $('#battSVal');
-    const reset = $('#battReset');
-    if (dock && btn && bx && by && bs && Hero.getMobileBattery){
-      const fmt  = v => (v < 0 ? '' : '+') + v.toFixed(3);
-      const fmtS = v => v.toFixed(2) + '×';
-      function paint(){
-        const st = Hero.getMobileBattery();
-        bx.value = st.x; by.value = st.y; bs.value = st.s;
-        bxv.textContent = fmt(st.x); byv.textContent = fmt(st.y);
-        bsv.textContent = fmtS(st.s);
-      }
-      /* 'input', not 'change': the point of a slider here is that the pack
-         tracks the thumb while it is being dragged. */
-      const push = () => {
-        Hero.setMobileBattery(parseFloat(bx.value), parseFloat(by.value),
-                              parseFloat(bs.value));
-        bxv.textContent = fmt(parseFloat(bx.value));
-        byv.textContent = fmt(parseFloat(by.value));
-        bsv.textContent = fmtS(parseFloat(bs.value));
-      };
-      bx.addEventListener('input', push);
-      by.addEventListener('input', push);
-      bs.addEventListener('input', push);
-      reset.addEventListener('click', () => {
-        const d = Hero.getMobileBattery().defaults;
-        Hero.setMobileBattery(d.x, d.y, d.s);
-        paint();
-      });
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const open = dock.classList.toggle('open');
-        btn.setAttribute('aria-expanded', String(open));
-      });
-      /* Dragging a slider must not also spin the hero canvas or scroll the
-         story out from under the thing being tuned. */
-      for (const el of [bx, by, bs])
-        el.addEventListener('pointerdown', e => e.stopPropagation());
-      paint();
-    }
-  }
-
-  /* --- ambient sound toggle (low drone layered on the game's AudioEngine) --- */
-  const st = $('#soundToggle');
-  let on = false, amb = null;
-  /* synthesized looping race-track ambience: a lowpassed engine/track rumble
-     (detuned oscillators with a slow swell, like cars passing) layered over a
-     band-limited wind/air bed from looping noise. No audio asset, seamless loop. */
-  function ambStart(){
-    AudioEngine.init();
-    if (!AudioEngine.ok || amb) return;
-    const c = AudioEngine.ctx, t = c.currentTime;
-    const master = c.createGain(); master.gain.value = 0; master.connect(c.destination);
-
-    // --- engine/track rumble: three detuned voices through a lowpass ---
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.value = 320; lp.Q.value = 0.6; lp.connect(master);
-    const rumble = c.createGain(); rumble.gain.value = 0.9; rumble.connect(lp);
-    const oscs = [];
-    [46, 69, 92].forEach((f, i) => {
-      const o = c.createOscillator(); o.type = i === 2 ? 'sine' : 'sawtooth';
-      o.frequency.value = f; o.detune.value = (i - 1) * 6;
-      o.connect(rumble); o.start(); oscs.push(o);
-    });
-    // slow swell (LFO on the rumble gain) — evokes engines rising and fading past
-    const swell = c.createOscillator(); swell.type = 'sine'; swell.frequency.value = 0.09;
-    const swellG = c.createGain(); swellG.gain.value = 0.35;
-    swell.connect(swellG); swellG.connect(rumble.gain); swell.start();
-    // faint pitch drift on the top voice so the loop never feels static
-    const drift = c.createOscillator(); drift.type = 'sine'; drift.frequency.value = 0.05;
-    const driftG = c.createGain(); driftG.gain.value = 8;
-    drift.connect(driftG); driftG.connect(oscs[2].frequency); drift.start();
-
-    // --- wind/air bed: looping noise buffer through a bandpass ---
-    const dur = 4;
-    const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
-    const noise = c.createBufferSource(); noise.buffer = buf; noise.loop = true;
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
-    bp.frequency.value = 520; bp.Q.value = 0.8;
-    const air = c.createGain(); air.gain.value = 0.18;
-    noise.connect(bp); bp.connect(air); air.connect(master); noise.start();
-
-    master.gain.setTargetAtTime(0.055, t, 1.6);
-    amb = { c, master, nodes: [...oscs, swell, drift, noise] };
-  }
-  function ambStop(){
-    if (!amb) return;
-    const { c, master, nodes } = amb;
-    master.gain.setTargetAtTime(0, c.currentTime, 0.4);
-    // tear the voices down after the fade so repeated toggles never stack
-    setTimeout(() => { nodes.forEach(n => { try { n.stop(); } catch (e) {} }); }, 900);
-    amb = null;
-  }
-  st.addEventListener('click', () => {
-    on = !on; st.classList.toggle('on', on);
-    st.setAttribute('aria-pressed', String(on));
-    if (on) ambStart(); else ambStop();
-  });
-  // duck ambience once the race ignites so it doesn't fight the engine
-  const sb = document.getElementById('startBtn');
-  if (sb) sb.addEventListener('click', ambStop);
 })();
 
 /* =====================================================================
@@ -5595,7 +5409,7 @@ const Game = (() => {
   const G = {
     state:'menu', paused:false,
     raceTime:0, topSpeed:0, driftScore:0,
-    lastIdx:Track.startIdx, prog:0, countStart:0, lastBeep:-1,
+    lastIdx:Track.startIdx, prog:0, countStart:0, lastCount:-1,
     batt:100, energy:0, regen:0, dist:0,   // EV telemetry
     pos:1,                                 // live race position (1..8)
     bestTime:null,   // session best (memory only)
@@ -5613,7 +5427,7 @@ const Game = (() => {
     Car.reset();
     Particles.clear();
     G.raceTime = 0; G.topSpeed = 0; G.driftScore = 0;
-    G.lastIdx = Track.startIdx; G.prog = 0; G.lastBeep = -1; G.paused = false;
+    G.lastIdx = Track.startIdx; G.prog = 0; G.lastCount = -1; G.paused = false;
     G.batt = 100; G.energy = 0; G.regen = 0; G.dist = 0;
     ui.battFill.style.width = '100%';
     ui.battFill.style.background = '#6FBF73';
@@ -5641,7 +5455,6 @@ const Game = (() => {
 
   function startCountdown(){
     reset();
-    AudioEngine.init();
     G.state = 'countdown';
     G.countStart = performance.now();
     Hero.fadeOut();                       // dissolve the white hero stage
@@ -5661,7 +5474,7 @@ const Game = (() => {
     document.body.classList.remove('playing');
     document.body.classList.remove('ended');
     Hero.show(scrollToEnd);               // back to the interactive hero
-    ui.bestLine.textContent = G.bestTime ? 'SESSION BEST — ' + fmt(G.bestTime) : '';
+    ui.bestLine.textContent = G.bestTime ? 'SESSION BEST: ' + fmt(G.bestTime) : '';
     reset();
   }
 
@@ -5670,13 +5483,11 @@ const Game = (() => {
     G.paused = p;
     ui.pauseScreen.style.display = p ? 'flex' : 'none';
     ui.pauseBtn.innerHTML = p ? '&#9654;' : '&#10074;&#10074;';
-    if (AudioEngine.ok) AudioEngine.update(0, 0, 0, false);  // duck audio now
   }
 
   function finish(){
     G.state = 'end';
     G.endTime = performance.now();
-    AudioEngine.finishJingle();
     const isBest = G.bestTime === null || G.raceTime < G.bestTime;
     if (isBest) G.bestTime = G.raceTime;
     ui.newBest.textContent = isBest ? '★ NEW SESSION BEST ★' : '';
@@ -5775,16 +5586,16 @@ const Game = (() => {
     last = now;
     const time = now/1000;
 
-    /* countdown with beeps */
+    /* countdown */
     if (G.state === 'countdown') {
       const e = (now - G.countStart)/1000;
       if (e < 3) {
         const n = Math.ceil(3-e);
-        ui.countNum.textContent = n;
-        if (n !== G.lastBeep) { G.lastBeep = n; AudioEngine.blip(560, 0.1); }
+        /* memoised: the number only changes once a second, so don't
+           re-write the node on every frame in between */
+        if (n !== G.lastCount) { G.lastCount = n; ui.countNum.textContent = n; }
       } else {
-        if (G.lastBeep !== 0) { G.lastBeep = 0; AudioEngine.blip(920, 0.25, 0.15); }
-        ui.countNum.textContent = 'GO!';
+        if (G.lastCount !== 0) { G.lastCount = 0; ui.countNum.textContent = 'GO!'; }
         G.state = 'race';
       }
     }
@@ -5852,12 +5663,6 @@ const Game = (() => {
       Particles.update(dt);
       Track.updateCrowd(time, Car.S.pos);
     }
-    /* engine fades out over ~3 s after the finish */
-    const endFade = G.state === 'end'
-      ? Math.max(0, 1 - (now - G.endTime)/3000) : 1;
-    AudioEngine.update(Math.min(1, Car.S.speed/80), Car.S.throttle,
-                       Math.abs(Car.S.latSpeed),
-                       racing || G.state === 'end', endFade);
 
     /* camera: cinematic shot director during the finish lap */
     if (!G.paused && G.state === 'end') {

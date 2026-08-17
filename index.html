@@ -489,15 +489,29 @@
          so every p constant in the file keeps its meaning.
        ★ The copy is unpositioned, so it paints UNDER the positioned sticky
          wrapper: the phonetic and the definition travel up, pass behind the
-         mark and leave, while the mark holds. The sticky releases when .wrap's
-         bottom reaches it, near the end of scene 1, and the mark exits with the
-         section. */
+         mark and leave, while the mark holds.
+       ★ THE RELEASE IS TIED TO #s1Claim, AND THAT COUPLING IS A REQUIREMENT.
+         The mark must still be on screen when "KASI is a battery company."
+         arrives, and should let go once it has. The sticky releases when
+         .wrap's bottom reaches it, near the end of scene 1 — which satisfies
+         that, but only because of how the two numbers sit relative to each
+         other, so here is the arithmetic to check it against. With V = viewport
+         height, the mark leaves the top of the frame at scroll 1.9V − markH
+         (.wrap runs to #s1's floor, and #s1 is --h:190vh) and the claim's first
+         line clears the bottom of the frame at 1.45V + lineH (#s1Claim is
+         top:245vh). So the requirement holds while
+
+             0.45V > markH + lineH
+
+         i.e. ~380 > ~90 at V=844, with the same slack down to very short
+         viewports. Change #s1's --h or --claim-top and re-check that line
+         before assuming the mark still outlives the claim's entrance. */
     /* ★ THE BOTTOM PAD MOVES FROM THE SECTION ONTO THE LAST LINE OF COPY, and
          that is what gives the lock its runway. A sticky element is confined to
          its containing block's CONTENT box — padding does not extend it — so
          with .chapter.lead's 26vh sitting on #s1 the wrap's content box stopped
          at the definition's last line and the mark had ~190px of travel: it
-         reached 14vh and was immediately dragged off again. As a margin on .def
+         reached its offset and was immediately dragged off again. As a margin on .def
          the same 26vh is inside the content box, so it both holds the copy off
          the section floor exactly as the padding did (identical rendered
          position, identical 190vh section) and hands the mark ~400px of hold.
@@ -506,7 +520,14 @@
     #s1 .wrap{align-self:stretch;display:flex;flex-direction:column;
       justify-content:flex-end;}
     #s1 .def{margin-bottom:26vh;}
-    .kasi-stack-wrap{display:block;position:sticky;top:14vh;z-index:2;
+    /* top:26px IS THE GUTTER, restated. .chapter's horizontal pad and #s1Claim
+       both measure 26px in from the edge, so resting the mark at 26px down puts
+       it on an equal top/left inset: it comes to a stop IN the corner, reading
+       as a placed mark rather than as copy that drifted up the frame. Lowering
+       the offset from 14vh only moves where the mark parks and lengthens its
+       approach — the exit is set by the container's bottom, not by this number
+       (see the release note above), so the claim coupling is unaffected. */
+    .kasi-stack-wrap{display:block;position:sticky;top:26px;z-index:2;
       width:min(190px,52vw);align-self:flex-start;}
     .kasi-stack-gleam{display:block;position:absolute;left:0;top:0;width:100%;
       aspect-ratio:1500/428;pointer-events:none;
